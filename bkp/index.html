@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Trigger Python from JS</title>
+        <link href="assets/css/bootstrap.min.css" rel="stylesheet" />
+        <script src="assets/js/bootstrap.bundle.min.js"></script>
+        <link rel="stylesheet" href="assets/css/all.min.css" />
+        <link rel="stylesheet" type="text/css" href="assets/css/style.css" />
+    </head>
+    <style>
+  .timer-content .timer-container {
+    position: relative;
+    width: 194px;
+    height: 196px;
+    top: 16px;
+    left: 0px;
+    border-radius: 50%;
+    overflow: hidden;
+  }
+
+  .timer-content .fill-ring {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: conic-gradient(#00c9b7 0deg, white 0deg);
+    z-index: 1;
+    transition: background 0.2s linear;
+  }
+
+  .tick {
+  position: absolute;
+  width: 5px;
+  height: 12px;
+  background-color: #ddd;
+  top: 0;
+  left: 50%;
+  transform-origin: center 95px;
+  border-radius: 3px;
+  transition: background-color 0.3s ease;
+  z-index: 2;
+}
+
+  .timer-content .tick.active {
+    background-color: #00c9b7;
+  }
+
+  .timer-content .center-label {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    z-index: 3;
+  }
+
+  .timer-content .center-label h1 {
+    margin: 0;
+    font-size: 3rem;
+    font-weight: bold;
+    color: #062c33;
+  }
+
+  .timer-content .center-label p {
+    margin: 0;
+    font-size: 14px;
+    color: #062c33;
+    line-height: 0.8;
+  }
+
+        #break-modal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.6);
+    color: white;
+    font-size: 24px;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+  }
+
+
+</style>
+
+    <body>
+        <!-- Splash Loader -->
+        <div id="splash-screen">
+            <img src="assets/images/splash.png" alt="Loading..." />
+        </div>
+        <span id="empty_element"></span>
+        <div id="break-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#000000a6; color:white; font-size:24px; justify-content:center; align-items:center; z-index:9999;">
+          ⚠️ You have been inactive for a while. Please take a break!
+        </div>
+
+        <!-- Main Login Page -->
+        <section id="loginPage">
+            <div class="row">
+                <div class="col-6">
+                    <div class="login-screen-img">
+                        <img src="assets/images/loginScreen.png" alt="login-screen-img" />
+                        <p id="app_version">-</p>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="row">
+                        <div class="col">
+                            <div class="login-form-content">
+                                <div class="heading">
+                                    <h1>Welcome</h1>
+                                    <p>Sign in to your account</p>
+                                </div>
+                                <form>
+                                    <div class="input-group">
+                                        <input type="text" id="email" class="form-input" placeholder="E-mail" />
+                                        <img src="assets/images/email.png" alt="email" class="input-icon email" />
+                                    </div>
+
+                                    <div class="input-group mb-2">
+                                        <input type="password" id="password" class="form-input" placeholder="Password" />
+                                        <img src="assets/images/lock.png" alt="lock" class="input-icon lock" />
+                                        <span class="password-toggle" id="togglePassword">
+                                            <i class="fas fa-eye"></i>
+                                        </span>
+                                    </div>
+
+                                    <div class="mb-4 d-flex justify-content-between px-4">
+                                        <div>
+                                            <input type="checkbox" class="form-check-input" id="remember_me" />
+                                            <label class="form-check-label" for="remember_me">Remember me</label>
+                                        </div>
+                                        <div>
+                                            <label class="form-check-label">
+                                                <a href="#" class="forget-link" id="forget_password">Forget Password?</a>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <button type="submit" class="btn btn-primary">Login</button>
+                                    </div>
+
+                                    <div class="mb-3 link">
+                                        <p>Don't have an account? <a href="#" id="register">Sign Up Here</a></p>
+                                    </div>
+                                </form>
+                            </div>
+                            <div class="form-bottom-img">
+                                <img src="assets/images/loginFormBg.png" alt="form-bg" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Dashboard Page -->
+        <section id="dashboard" style="display: none;">
+            <nav class="navigations">
+                <div class="row align-items-center">
+                    <div class="col-4">
+                        <div class="main-logo" id="main-dashboard-logo">
+                            <img src="assets/images/logo.png" alt="main-logo" width="100%" />
+                        </div>
+                    </div>
+                    <div class="col-8">
+                        <div class="nav-links">
+                            <ul>
+                                <li>
+                                    <a href="#" id="break_logs"><img src="assets/images/break.png" alt="main-logo" /></a>
+                                    <p class="mb-0">Break Logs</p>
+                                </li>
+                                <li>
+                                    <a href="#" id="notifications"><img src="assets/images/ring.png" alt="main-logo" /></a>
+                                    <p class="mb-0">Notifications</p>
+                                </li>
+                                <li>
+                                    <a href="#" id="settings"><img src="assets/images/settings.png" alt="main-logo" /></a>
+                                    <p class="mb-0">Settings</p>
+                                </li>
+                                <li>
+                                    <a href="#" id="profile"><img src="assets/images/avatar.png" alt="main-logo" class="awatar" style="width: 55%;" /></a>
+                                </li>
+                                <li>
+                                    <a href="#" id="logout"><img src="assets/images/logout.png" alt="main-logo" /></a>
+                                    <p class="mb-0">Logout</p>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+            <main id="dashboard_content">
+                <div class="row">
+                    <div class="col-12 d-flex justify-content-center">
+                        <div class="content">
+                            <div class="row">
+                                <div class="col-5">
+                                    <div class="timer">
+                                        <div class="timer-content">
+                                          <div class="timer-container shift-timer" id="shiftTimer">
+                                            <div class="fill-ring" id="fillRing"></div>
+                                            <div class="center-label">
+                                              <h1 id="hourLabel">9:00</h1>
+                                              <p>hrs</p>
+                                            </div>
+                                          </div>
+                                          <div class="timer-container break-timer" id="breakTimer" style="display: none;">
+                                              <div class="fill-ring" id="breakFillRing"></div>
+                                              <div class="center-label">
+                                                <h1 id="time">15</h1>
+                                                <p>min</p>
+                                              </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-7 d-flex align-items-center">
+                                    <div class="user-info-content">
+                                        <div class="user-info">
+                                            <h1 class="name-heading" id="empName"></h1>
+                                            <h4 class="shift-heading">Shift Timing</h4>
+                                            <p class="shift-time" id="empShift"></p>
+                                        </div>
+                                        <div class="break-actions">
+                                            <img src="assets/images/play.png" width="10%" alt="timer" id="play" />
+                                            <img src="assets/images/pause.png" width="10%" alt="timer" id="pause" />
+                                            <!-- <img src="assets/images/stop.png" width="10%" alt="timer" id="stop" /> -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-12">
+                        <div class="circle-steps">
+                            <div class="progress-container">
+                                <div class="step">
+                                  <div class="circle" id="loginCircle"></div>
+                                  <div class="label">
+                                    <h1>LOGIN TIME</h1>
+                                    <p id="login_time">1:10 pm</p>
+                                  </div>
+                                </div>
+                                <div class="step">
+                                  <div class="circle" id="breakCircle"></div>
+                                  <div class="label">
+                                    <h1>BREAK</h1>
+                                    <p><span id="break_startime">-</span> <span id="break_endtime"></span></p>
+                                  </div>
+                                </div>
+                                <div class="step">
+                                  <div class="circle" id="logoutCircle"></div>
+                                  <div class="label">
+                                    <h1>LOGOUT</h1>
+                                    <p id="logout">-</p>
+                                  </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+            <main id="break_logs_content" style="display: none;">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="break-log-wrapper">
+                            <h1 class="heading">Break Logs</h1>
+                            <div class="content-log">
+                                <table class="logs-tbl">
+                                    <thead>
+                                        <tr>
+                                            <th>Time</th>
+                                            <th>Type</th>
+                                            <th>Duration</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>8:00 to 6:00 pm</td>
+                                            <td>Trainings</td>
+                                            <td>1 Hour</td>
+                                        </tr>
+                                        <tr>
+                                            <td>8:00 to 6:00 pm</td>
+                                            <td>Meeting</td>
+                                            <td>1 Hour</td>
+                                        </tr>
+                                        <tr>
+                                            <td>8:00 to 6:00 pm</td>
+                                            <td>Lunch Braek</td>
+                                            <td>1 Hour</td>
+                                        </tr>
+                                        <tr>
+                                            <td>8:00 to 6:00 pm</td>
+                                            <td>Tea Break</td>
+                                            <td>1 Hour</td>
+                                        </tr>
+                                        <tr>
+                                            <td>8:00 to 6:00 pm</td>
+                                            <td>Awei Break</td>
+                                            <td>1 Hour</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <nav aria-label="..." class="logs-pagination">
+                                <ul class="pagination">
+                                    <li class="page-item disabled">
+                                        <a class="page-link" href="#" tabindex="-1">Previous</a>
+                                    </li>
+                                    <li class="page-item"><a class="page-link active" href="#">1</a></li>
+                                    <li class="page-item active">
+                                        <a class="page-link" href="#">2 <span class="sr-only">(current)</span></a>
+                                    </li>
+                                    <li class="page-item active">
+                                        <a class="page-link" href="#">3 <span class="sr-only">(current)</span></a>
+                                    </li>
+                                    <li class="page-item active">
+                                        <a class="page-link ignore" href="#">... <span class="sr-only">(current)</span></a>
+                                    </li>
+                                    <li class="page-item active">
+                                        <a class="page-link" href="#">8 <span class="sr-only">(current)</span></a>
+                                    </li>
+                                    <li class="page-item active">
+                                        <a class="page-link" href="#">9 <span class="sr-only">(current)</span></a>
+                                    </li>
+                                    <li class="page-item active">
+                                        <a class="page-link" href="#">10 <span class="sr-only">(current)</span></a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="#">Next</a>
+                                    </li>
+                                </ul>
+                            </nav>
+                        </div>
+                    </div>
+                </div>
+            </main>
+            <main id="break" style="display: none;">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="break-wrapper">
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="break-type-wrapper">
+                                        <h1>Select Break type</h1>
+                                        <form>
+                                            <div class="form-group">
+
+                                              <select id="break_type">
+                                                <option value="training">Trainings</option>
+                                                <option value="meeting">Meeting</option>
+                                                <option value="lunch_break">Lunch Break</option>
+                                                <option value="tea_break">Tea Break</option>
+                                                <option value="awei_break">Awei Break</option>
+                                              </select>
+                                            </div>
+
+
+                                            <div class="form-group">
+                                              <textarea id="comment" placeholder="Comment"></textarea>
+                                            </div>
+
+                                            <button type="submit">Submit</button>
+                                        </form>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="break-logo-wrapper">
+                                        <img src="assets/images/break-logo.png" alt="break-logo" width="100%" />
+                                        <img src="assets/images/cross.png" alt="break-logo" width="9%" class="cross-icon" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            <footer>
+                <p>Powered by Bioncos Global</p>
+            </footer>
+        </section>
+        <script>
+document.addEventListener("DOMContentLoaded", async () => {
+    let shiftTimerInterval = null;
+    let breakTimerInterval = null;
+    let breakStartTime = null;
+    let breakEndTime = null;
+
+    let currentHourPassed = 0;
+    let currentMinutePassed = 0;
+    let breakMinutesPassed = 0;
+
+    const totalBreakMinutes = 15;
+
+    let shiftTicks = [];
+    let breakTicks = [];
+
+    const passwordInput = document.getElementById("password");
+    const togglePassword = document.getElementById("togglePassword");
+    const toggleIcon = togglePassword.querySelector("i");
+    const emailInput = document.getElementById("email");
+    const rememberMe = document.getElementById("remember_me");
+
+    function createShiftTicks(totalShiftMinutes) {
+        const timer = document.getElementById("shiftTimer");
+        shiftTicks = [];
+        timer.querySelectorAll(".tick").forEach(el => el.remove());
+
+        const totalHours = Math.ceil(totalShiftMinutes / 60);
+        const degreePerHour = 360 / totalHours;
+
+        for (let i = 0; i < totalHours; i++) {
+            const tick = document.createElement("div");
+            tick.classList.add("tick");
+            tick.style.transform = `rotate(${i * degreePerHour}deg)`;
+            timer.appendChild(tick);
+            shiftTicks.push(tick);
+        }
+    }
+
+    function createBreakTicks() {
+        const breakTimer = document.getElementById("breakTimer");
+        breakTicks = [];
+        breakTimer.querySelectorAll(".tick").forEach(el => el.remove());
+
+        const degreePerTick = 360 / totalBreakMinutes;
+
+        for (let i = 0; i < totalBreakMinutes; i++) {
+            const tick = document.createElement("div");
+            tick.classList.add("tick");
+            tick.style.transform = `rotate(${i * degreePerTick}deg) translateX(-50%)`;
+            tick.style.transformOrigin = "center 95px";
+            breakTimer.appendChild(tick);
+            breakTicks.push(tick);
+        }
+
+        if (!document.getElementById("breakFillRing")) {
+            const fillRing = document.createElement("div");
+            fillRing.id = "breakFillRing";
+            fillRing.classList.add("fill-ring");
+            breakTimer.prepend(fillRing);
+        }
+    }
+
+    function startShiftTimer(totalShiftMinutes, resumeHour = 0, resumeMinute = 0) {
+        const shiftTimer = document.getElementById("shiftTimer");
+        const fillRing = document.getElementById("fillRing");
+        const hourLabel = document.getElementById("hourLabel");
+
+        currentHourPassed = resumeHour;
+        currentMinutePassed = resumeMinute;
+
+        shiftTimer.style.display = "block";
+        document.getElementById("breakTimer").style.display = "none";
+
+        if (!shiftTicks.length) createShiftTicks(totalShiftMinutes);
+
+        const elapsed = currentHourPassed * 60 + currentMinutePassed;
+        const remaining = totalShiftMinutes - elapsed;
+        const hrs = Math.floor(remaining / 60);
+        const mins = remaining % 60;
+        hourLabel.innerText = `${hrs}:${mins.toString().padStart(2, '0')}`;
+
+        const angle = (elapsed / totalShiftMinutes) * 360;
+        fillRing.style.background = `conic-gradient(#0aebc1 ${angle}deg, white ${angle}deg)`;
+
+        shiftTimerInterval = setInterval(() => {
+            const elapsed = currentHourPassed * 60 + currentMinutePassed;
+            const remaining = totalShiftMinutes - elapsed;
+
+            const angle = (elapsed / totalShiftMinutes) * 360;
+            fillRing.style.background = `conic-gradient(#0aebc1 ${angle}deg, white ${angle}deg)`;
+
+            const completedHour = Math.floor(elapsed / 60);
+            if (completedHour < shiftTicks.length) {
+                shiftTicks[completedHour].classList.add("active");
+            }
+
+            const hrs = Math.floor(remaining / 60);
+            const mins = remaining % 60;
+            hourLabel.innerText = `${hrs}:${mins.toString().padStart(2, '0')}`;
+
+            currentMinutePassed++;
+            if (currentMinutePassed >= 60) {
+                currentMinutePassed = 0;
+                currentHourPassed++;
+            }
+
+            if (elapsed >= totalShiftMinutes) {
+                clearInterval(shiftTimerInterval);
+                hourLabel.innerText = `0:00`;
+            }
+        }, 1000);
+    }
+
+
+    function formatTimeForDisplay(timeStr) {
+        const [time, modifier] = timeStr.split(" ");
+        let [hours, minutes] = time.split(":").map(Number);
+        hours = hours % 12 || 12; // Convert 0/12 to 12-hour format
+        const displayMinutes = minutes.toString().padStart(2, '0');
+        return `${hours}:${displayMinutes} ${modifier}`;
+    }
+
+
+    function startBreakTimer() {
+        const breakTimer = document.getElementById("breakTimer");
+        const timeLabel = document.getElementById("time");
+        const fillRing = document.getElementById("breakFillRing");
+
+        breakMinutesPassed = 0;
+        breakTicks.forEach(tick => tick.classList.remove("active"));
+        if (fillRing) {
+            fillRing.style.background = "conic-gradient(#0aebc1 0deg, white 0deg)";
+        }
+        if (timeLabel) {
+            timeLabel.innerText = totalBreakMinutes;
+        }
+
+        document.getElementById("shiftTimer").style.display = "none";
+        breakTimer.style.display = "block";
+
+        if (!breakTicks.length) createBreakTicks();
+
+        const breakStartTime = new Date();
+        const breakStartElem = document.getElementById("break_startime");
+        if (breakStartElem) {
+            breakStartElem.innerText = formatTime(breakStartTime);
+        }
+
+        const breakEndElem = document.getElementById("break_endtime");
+        if (breakEndElem) {
+            breakEndElem.innerText = "";
+        }
+
+        breakTimerInterval = setInterval(() => {
+            if (breakMinutesPassed < totalBreakMinutes) {
+                breakTicks[breakMinutesPassed]?.classList.add("active");
+
+                const angle = ((breakMinutesPassed + 1) / totalBreakMinutes) * 360;
+                fillRing.style.background = `conic-gradient(#0aebc1 ${angle}deg, white ${angle}deg)`;
+
+                breakMinutesPassed++;
+                timeLabel.innerText = totalBreakMinutes - breakMinutesPassed;
+            } else {
+                clearInterval(breakTimerInterval);
+                breakTimerInterval = null;
+
+                const breakEndTime = new Date();
+                const breakEndElem = document.getElementById("break_endtime");
+                if (breakEndElem) {
+                    breakEndElem.innerText = " - " + formatTime(breakEndTime);
+                }
+
+                document.getElementById("shiftTimer").style.display = "block";
+                breakTimer.style.display = "none";
+                resumeShiftTimer()
+
+
+
+
+                document.getElementById("play").style.pointerEvents = "auto";
+                document.getElementById("play").style.opacity = "1";
+                document.getElementById("breakCircle").classList.remove("active");
+            }
+        }, 1000);
+    }
+
+    function formatTime(date) {
+        let hrs = date.getHours();
+        const mins = date.getMinutes().toString().padStart(2, '0');
+        const ampm = hrs >= 12 ? 'pm' : 'am';
+        hrs = hrs % 12 || 12;
+        return `${hrs}:${mins} ${ampm}`;
+    }
+
+    function resumeShiftTimer(){
+        const userData = JSON.parse(localStorage.getItem("user_data") || "{}");
+
+        const { hours: startHrs, minutes: startMins } = parseTime(userData.ShiftStartTime);
+        const { hours: endHrs, minutes: endMins } = parseTime(userData.ShiftEndTime);
+
+        const now = new Date();
+        const startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), startHrs, startMins);
+        let endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), endHrs, endMins);
+        if (endDate <= startDate) endDate.setDate(endDate.getDate() + 1);
+
+        const totalShiftMinutes = Math.floor((endDate - startDate) / (1000 * 60));
+        startShiftTimer(totalShiftMinutes, currentHourPassed, currentMinutePassed);
+    }
+
+    function pauseBreakTimer() {
+        clearInterval(breakTimerInterval);
+        breakTimerInterval = null;
+        breakMinutesPassed = 0;
+        breakTicks.forEach(tick => tick.classList.remove("active"));
+
+        const fillRing = document.getElementById("breakFillRing");
+        if (fillRing) {
+            fillRing.style.background = "conic-gradient(#0aebc1 0deg, white 0deg)";
+        }
+
+        const timeLabel = document.getElementById("time");
+        if (timeLabel) {
+            timeLabel.innerText = totalBreakMinutes;
+        }
+
+        const breakEndTime = new Date();
+        const breakEndElem = document.getElementById("break_endtime");
+        if (breakEndElem) {
+            breakEndElem.innerText = " - " + formatTime(breakEndTime);
+        }
+    }
+
+    function stopShiftTimer() {
+        clearInterval(shiftTimerInterval);
+        shiftTimerInterval = null;
+    }
+
+    function resetAllTimers() {
+        clearInterval(shiftTimerInterval);
+        clearInterval(breakTimerInterval);
+
+        currentHourPassed = 0;
+        currentMinutePassed = 0;
+        breakMinutesPassed = 0;
+
+        document.getElementById("hourLabel").innerText = "0:00";
+        document.getElementById("time").innerText = "15";
+
+        document.getElementById("fillRing").style.background = "conic-gradient(#0aebc1 0deg, white 0deg)";
+        document.getElementById("breakFillRing")?.style?.setProperty("background", "conic-gradient(#0aebc1 0deg, white 0deg)");
+
+        document.querySelectorAll(".tick").forEach(t => t.classList.remove("active"));
+        shiftTicks = [];
+        breakTicks = [];
+
+        document.querySelector("#break form")?.reset();
+    }
+
+    function displaySplashScreen() {
+        const splash = document.getElementById("splash-screen");
+        const loginPage = document.getElementById("loginPage");
+        setTimeout(() => {
+            splash.style.opacity = 0;
+            setTimeout(() => {
+                splash.style.display = "none";
+                loginPage.style.display = "block";
+            }, 500);
+        }, 1000);
+    }
+
+    function parseTime(timeStr) {
+        const [time, modifier] = timeStr.split(" ");
+        let [hours, minutes] = time.split(":").map(Number);
+        if (modifier.toLowerCase() === "pm" && hours !== 12) hours += 12;
+        if (modifier.toLowerCase() === "am" && hours === 12) hours = 0;
+        return { hours, minutes };
+    }
+
+    displaySplashScreen();
+
+    document.querySelector("button[type='submit']").addEventListener("click", async (e) => {
+         e.preventDefault();
+        const email = emailInput.value.trim();
+        const password = passwordInput.value.trim();
+        const rememberMe = document.getElementById("remember_me").checked;
+
+        // Validation
+        if (!email && !password) {
+            alert("Please enter username and password.");
+            return;
+        }
+        if (!email) {
+            alert("Username cannot be empty.");
+            return;
+        }
+        if (!password) {
+            alert("Password cannot be empty.");
+            return;
+        }
+
+        if (rememberMe) {
+            await window.pywebview.api.save_remembered_user(email, password);
+        } else {
+            await window.pywebview.api.save_remembered_user("", "");
+        }
+
+        const now = new Date();
+        let hours = now.getHours();
+        const minutes = now.getMinutes().toString().padStart(2, '0');
+        const ampm = hours >= 12 ? 'pm' : 'am';
+        hours = hours % 12 || 12;
+        const formattedLoginTime = `${hours}:${minutes} ${ampm}`;
+
+        try {
+            const response = await window.pywebview.api.login(email, password);
+            const { status, data } = JSON.parse(response);
+            console.log(status)
+            console.log(data)
+            if (status) {
+                const empName = `${data.EmpFirstName} ${data.EmpLastName}`;
+                const empShift = `${formatTimeForDisplay(data.ShiftStartTime)} - ${formatTimeForDisplay(data.ShiftEndTime)}`;
+
+                const { hours: startHrs, minutes: startMins } = parseTime(data.ShiftStartTime);
+                const { hours: endHrs, minutes: endMins } = parseTime(data.ShiftEndTime);
+
+                const now = new Date();
+                const startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), startHrs, startMins);
+                let endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), endHrs, endMins);
+
+                if (endDate <= startDate) {
+                    endDate.setDate(endDate.getDate() + 1); // Cross-midnight fix
+                }
+
+                const totalShiftMinutes = Math.floor((endDate - startDate) / (1000 * 60));
+
+                localStorage.setItem("user_data", JSON.stringify(data));
+
+                document.getElementById("login_time").innerText = formattedLoginTime;
+                document.getElementById("empName").innerText = empName;
+                document.getElementById("empShift").innerText = empShift;
+
+                document.getElementById("loginPage").style.display = "none";
+                document.getElementById("dashboard").style.display = "block";
+                document.getElementById("loginCircle").classList.add("active");
+
+                resetAllTimers();
+                createShiftTicks(totalShiftMinutes);
+                createBreakTicks();
+
+                startShiftTimer(totalShiftMinutes);
+            } else {
+                if(data.IPAddresNotFound === 'Invalid IP Address'){
+                    alert("Your IP address is not registered. ");
+                }else{
+                    alert("Invalid username or password.");
+                }
+            }
+        } catch (err) {
+            console.error("Login failed:", err);
+            alert("Login error.");
+        }
+    });
+
+
+
+
+    document.getElementById("play").addEventListener("click", () => {
+        if (breakTimerInterval) return;
+        document.getElementById("dashboard_content").style.display = "none";
+        document.getElementById("break").style.display = "block";
+    });
+
+    document.querySelector("#break form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        stopShiftTimer();
+
+        const breakType = document.getElementById("break_type").value;
+        const comment = document.getElementById("comment").value;
+
+        console.log("Break form submitted", { breakType, comment });
+
+        document.getElementById("break").style.display = "none";
+        document.getElementById("dashboard_content").style.display = "block";
+
+        document.getElementById("play").style.pointerEvents = "none";
+        document.getElementById("play").style.opacity = "0.5";
+        document.getElementById("breakCircle").classList.add("active");
+
+        try{
+            const userData = JSON.parse(localStorage.getItem("user_data") || "{}");
+            const response = await window.pywebview.api.breakin(
+                userData.EID || "",
+                breakType || "",
+                comment || ""
+            );
+            console.log(response)
+        }catch(err){
+            console.err("Break in API error")
+        }
+
+        startBreakTimer();
+    });
+
+    document.getElementById("pause").addEventListener("click", async () => {
+        if (breakTimerInterval) {
+            pauseBreakTimer();
+            const userData = JSON.parse(localStorage.getItem("user_data") || "{}");
+
+            const { hours: startHrs, minutes: startMins } = parseTime(userData.ShiftStartTime);
+            const { hours: endHrs, minutes: endMins } = parseTime(userData.ShiftEndTime);
+
+            const now = new Date();
+            const startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), startHrs, startMins);
+            let endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), endHrs, endMins);
+            if (endDate <= startDate) endDate.setDate(endDate.getDate() + 1);
+
+            const totalShiftMinutes = Math.floor((endDate - startDate) / (1000 * 60));
+            startShiftTimer(totalShiftMinutes, currentHourPassed, currentMinutePassed);
+
+            document.getElementById("play").style.pointerEvents = "auto";
+            document.getElementById("play").style.opacity = "1";
+            document.getElementById("breakCircle").classList.remove("active");
+
+            await callBreakOutAPI()
+        }
+    });
+
+
+    async function callBreakOutAPI(){
+        try{
+            const userData = JSON.parse(localStorage.getItem("user_data") || "{}");
+            const comment = document.getElementById("comment").value;
+               console.log(comment)
+            const response = await window.pywebview.api.breakout(
+                userData.EID,
+                breakType,
+                comment
+            );
+            console.log(response)
+        }catch(err){
+            console.error("Break out API error")
+        }
+    }
+
+    document.getElementById("logout").addEventListener("click", async () => {
+        try {
+            const userData = JSON.parse(localStorage.getItem("user_data") || "{}");
+            await window.pywebview.api.logout(
+                userData.EID || "",
+                userData.EOD || "",
+                userData.TotalChats || 0,
+                userData.TotalBillableChat || 0
+            );
+
+            stopShiftTimer();
+            pauseBreakTimer();
+            localStorage.clear();
+
+            document.getElementById("dashboard").style.display = "none";
+            document.getElementById("loginPage").style.display = "block";
+
+            document.getElementById("play").style.pointerEvents = "auto";
+            document.getElementById("play").style.opacity = "1";
+        } catch (err) {
+            console.warn("Logout API failed, proceeding anyway");
+        }
+    });
+
+    document.querySelector(".cross-icon").addEventListener("click", () => {
+        document.getElementById("break").style.display = "none";
+        document.getElementById("dashboard_content").style.display = "block";
+        if (!shiftTimerInterval) {
+            const userData = JSON.parse(localStorage.getItem("user_data") || "{}");
+
+            const { hours: startHrs, minutes: startMins } = parseTime(userData.ShiftStartTime);
+            const { hours: endHrs, minutes: endMins } = parseTime(userData.ShiftEndTime);
+
+            const now = new Date();
+            const startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), startHrs, startMins);
+            let endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), endHrs, endMins);
+            if (endDate <= startDate) endDate.setDate(endDate.getDate() + 1);
+
+            const totalShiftMinutes = Math.floor((endDate - startDate) / (1000 * 60));
+            startShiftTimer(totalShiftMinutes, currentHourPassed, currentMinutePassed);
+        }
+
+        document.querySelector("#break form")?.reset();
+    });
+
+    document.getElementById("break_logs").addEventListener("click", () => {
+        document.getElementById("dashboard_content").style.display = "none";
+        document.getElementById("break").style.display = "none";
+        document.getElementById("break_logs_content").style.display = "block";
+    });
+
+    document.getElementById("main-dashboard-logo").addEventListener("click", () => {
+        document.getElementById("break_logs_content").style.display = "none";
+        document.getElementById("break").style.display = "none";
+        document.getElementById("dashboard_content").style.display = "block";
+    });
+
+    togglePassword.addEventListener("click", () => {
+        const isPassword = passwordInput.type === "password";
+        passwordInput.type = isPassword ? "text" : "password";
+        toggleIcon.classList.toggle("fa-eye");
+        toggleIcon.classList.toggle("fa-eye-slash");
+    });
+
+    async function loadRememberMeData(){
+        try {
+            const saved = await window.pywebview.api.get_remembered_user();
+            console.log("Loaded saved user:", saved); // Debug output
+
+            if (saved.email && saved.password) {
+                emailInput.value = saved.email;
+                passwordInput.value = saved.password;
+                rememberMe.checked = true;
+            }
+        } catch (err) {
+            console.error("Failed to load remembered user", err);
+        }
+    }
+
+    async function versionCheck(){
+        try {
+            const version_info = await window.pywebview.api.version_check();
+            console.log("version_info:", version_info); // Debug output
+            if(version_info.status){
+                document.getElementById("app_version").innerText = "version: " + version_info.data.version;
+            }
+
+        } catch (err) {
+            console.error("Failed to load remembered user", err);
+        }
+    }
+
+
+    setTimeout(async () => {
+      const el = document.getElementById("empty_element");
+      if (el) {
+        el.click();
+        loadRememberMeData()
+        versionCheck()
+      }
+    }, 1000);
+
+
+    window.onload = () => {
+
+
+        window.showBreakPopup = function () {
+          document.getElementById("break-modal").style.display = "flex";
+        };
+      };
+
+
+});
+</script>
+
+
+
+
+
+
+
+
+<!--        <script src="assets/js/custom.js"></script>-->
+    </body>
+</html>

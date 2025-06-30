@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Trigger Python from JS</title>
+        <link href="assets/css/bootstrap.min.css" rel="stylesheet" />
+        <script src="assets/js/bootstrap.bundle.min.js"></script>
+        <link rel="stylesheet" href="assets/css/all.min.css" />
+        <link rel="stylesheet" type="text/css" href="assets/css/style.css" />
+    </head>
+    <style>
+  .timer-content .timer-container {
+    position: relative;
+    width: 200px;
+    height: 200px;
+    top: 21px;
+    left: -2px;
+    border-radius: 50%;
+    overflow: hidden;
+  }
+
+  .timer-content .fill-ring {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: conic-gradient(#00c9b7 0deg, white 0deg);
+    z-index: 1;
+    transition: background 0.2s linear;
+  }
+
+  .timer-content .tick {
+    position: absolute;
+    width: 5px;
+    height: 12px;
+    background-color: #ddd;
+    top: 0;
+    left: 50%;
+    transform-origin: center 95px;
+    border-radius: 3px;
+    transition: background-color 0.3s ease;
+    z-index: 2;
+  }
+
+  .timer-content .tick.active {
+    background-color: #00c9b7;
+  }
+
+  .timer-content .center-label {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    z-index: 3;
+  }
+
+  .timer-content .center-label h1 {
+    margin: 0;
+    font-size: 3rem;
+    font-weight: bold;
+    color: #062c33;
+  }
+
+  .timer-content .center-label p {
+    margin: 0;
+    font-size: 14px;
+    color: #062c33;
+    line-height: 0.8;
+  }
+</style>
+
+    <body>
+        <!-- Splash Loader -->
+        <div id="splash-screen">
+            <img src="assets/images/splash.png" alt="Loading..." />
+        </div>
+
+        <!-- Main Login Page -->
+        <section id="loginPage">
+            <div class="row">
+                <div class="col-6">
+                    <div class="login-screen-img">
+                        <img src="assets/images/loginScreen.png" alt="login-screen-img" />
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="row">
+                        <div class="col">
+                            <div class="login-form-content">
+                                <div class="heading">
+                                    <h1>Welcome</h1>
+                                    <p>Sign in to your account</p>
+                                </div>
+                                <form>
+                                    <div class="input-group">
+                                        <input type="text" id="email" class="form-input" placeholder="E-mail" />
+                                        <img src="assets/images/email.png" alt="email" class="input-icon email" />
+                                    </div>
+
+                                    <div class="input-group mb-2">
+                                        <input type="password" id="password" class="form-input" placeholder="Password" />
+                                        <img src="assets/images/lock.png" alt="lock" class="input-icon lock" />
+                                        <span class="password-toggle" id="togglePassword">
+                                            <i class="fas fa-eye"></i>
+                                        </span>
+                                    </div>
+
+                                    <div class="mb-4 d-flex justify-content-between px-4">
+                                        <div>
+                                            <input type="checkbox" class="form-check-input" id="remember_me" />
+                                            <label class="form-check-label" for="remember_me">Remember me</label>
+                                        </div>
+                                        <div>
+                                            <label class="form-check-label">
+                                                <a href="#" class="forget-link" id="forget_password">Forget Password?</a>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <button type="submit" class="btn btn-primary">Login</button>
+                                    </div>
+
+                                    <div class="mb-3 link">
+                                        <p>Don't have an account? <a href="#" id="register">Sign Up Here</a></p>
+                                    </div>
+                                </form>
+                            </div>
+                            <div class="form-bottom-img">
+                                <img src="assets/images/loginFormBg.png" alt="form-bg" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Dashboard Page -->
+        <section id="dashboard" style="display: none;">
+            <nav class="navigations">
+                <div class="row align-items-center">
+                    <div class="col-4">
+                        <div class="main-logo" id="main-dashboard-logo">
+                            <img src="assets/images/logo.png" alt="main-logo" width="100%" />
+                        </div>
+                    </div>
+                    <div class="col-8">
+                        <div class="nav-links">
+                            <ul>
+                                <li>
+                                    <a href="#" id="break_logs"><img src="assets/images/break.png" alt="main-logo" /></a>
+                                    <p class="mb-0">Break Logs</p>
+                                </li>
+                                <li>
+                                    <a href="#" id="notifications"><img src="assets/images/ring.png" alt="main-logo" /></a>
+                                    <p class="mb-0">Notifications</p>
+                                </li>
+                                <li>
+                                    <a href="#" id="settings"><img src="assets/images/settings.png" alt="main-logo" /></a>
+                                    <p class="mb-0">Settings</p>
+                                </li>
+                                <li>
+                                    <a href="#" id="profile"><img src="assets/images/avatar.png" alt="main-logo" class="awatar" style="width: 55%;" /></a>
+                                </li>
+                                <li>
+                                    <a href="#" id="logout"><img src="assets/images/logout.png" alt="main-logo" /></a>
+                                    <p class="mb-0">Logout</p>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+            <main id="dashboard_content">
+                <div class="row">
+                    <div class="col-12 d-flex justify-content-center">
+                        <div class="content">
+                            <div class="row">
+                                <div class="col-5">
+                                    <div class="timer">
+                                        <div class="timer-content">
+<!--                                            <div class="timer-container" id="timer">-->
+<!--                                                <div class="center-label">-->
+<!--                                                    <h1 id="hourLabel">9:00</h1>-->
+<!--                                                    <p>hrs</p>-->
+<!--                                                </div>-->
+<!--                                            </div>-->
+                                            <div class="clock-container" id="clock">
+                                                <div class="fill-ring" id="fillRing"></div>
+                                                <div class="center-info">
+                                                  <h2 id="remainingTime">9:00</h2>
+                                                  <p>hrs left</p>
+                                                </div>
+                                              </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-7 d-flex align-items-center">
+                                    <div class="user-info-content">
+                                        <div class="user-info">
+                                            <h1 class="name-heading" id="empName"></h1>
+                                            <h4 class="shift-heading">Shift Timing</h4>
+                                            <p class="shift-time" id="empShift"></p>
+                                        </div>
+                                        <div class="break-actions">
+                                            <img src="assets/images/play.png" width="10%" alt="timer" id="play" />
+                                            <img src="assets/images/pause.png" width="10%" alt="timer" id="pause" />
+                                            <img src="assets/images/stop.png" width="10%" alt="timer" id="stop" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-12">
+                        <div class="circle-steps">
+                            <div class="progress-container">
+                                <div class="step">
+                                    <div class="circle"></div>
+                                    <div class="label">
+                                        <h1>LOGIN TIME</h1>
+                                        <p>1:10 pm</p>
+                                    </div>
+                                </div>
+                                <div class="step">
+                                    <div class="circle"></div>
+                                    <div class="label">
+                                        <h1>BREAK</h1>
+                                        <p>03:00 pm - 04:00 pm</p>
+                                    </div>
+                                </div>
+                                <div class="step">
+                                    <div class="circle"></div>
+                                    <div class="label">
+                                        <h1>LOGOUT</h1>
+                                        <p>-</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+            <main id="break_logs_content" style="display: none;">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="break-log-wrapper">
+                            <h1 class="heading">Break Logs</h1>
+                            <div class="content-log">
+                                <table class="logs-tbl">
+                                    <thead>
+                                        <tr>
+                                            <th>Time</th>
+                                            <th>Type</th>
+                                            <th>Duration</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>8:00 to 6:00 pm</td>
+                                            <td>Trainings</td>
+                                            <td>1 Hour</td>
+                                        </tr>
+                                        <tr>
+                                            <td>8:00 to 6:00 pm</td>
+                                            <td>Meeting</td>
+                                            <td>1 Hour</td>
+                                        </tr>
+                                        <tr>
+                                            <td>8:00 to 6:00 pm</td>
+                                            <td>Lunch Braek</td>
+                                            <td>1 Hour</td>
+                                        </tr>
+                                        <tr>
+                                            <td>8:00 to 6:00 pm</td>
+                                            <td>Tea Break</td>
+                                            <td>1 Hour</td>
+                                        </tr>
+                                        <tr>
+                                            <td>8:00 to 6:00 pm</td>
+                                            <td>Awei Break</td>
+                                            <td>1 Hour</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <nav aria-label="..." class="logs-pagination">
+                                <ul class="pagination">
+                                    <li class="page-item disabled">
+                                        <a class="page-link" href="#" tabindex="-1">Previous</a>
+                                    </li>
+                                    <li class="page-item"><a class="page-link active" href="#">1</a></li>
+                                    <li class="page-item active">
+                                        <a class="page-link" href="#">2 <span class="sr-only">(current)</span></a>
+                                    </li>
+                                    <li class="page-item active">
+                                        <a class="page-link" href="#">3 <span class="sr-only">(current)</span></a>
+                                    </li>
+                                    <li class="page-item active">
+                                        <a class="page-link ignore" href="#">... <span class="sr-only">(current)</span></a>
+                                    </li>
+                                    <li class="page-item active">
+                                        <a class="page-link" href="#">8 <span class="sr-only">(current)</span></a>
+                                    </li>
+                                    <li class="page-item active">
+                                        <a class="page-link" href="#">9 <span class="sr-only">(current)</span></a>
+                                    </li>
+                                    <li class="page-item active">
+                                        <a class="page-link" href="#">10 <span class="sr-only">(current)</span></a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="#">Next</a>
+                                    </li>
+                                </ul>
+                            </nav>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            <footer>
+                <p>Powered by Bioncos Global</p>
+            </footer>
+        </section>
+        <script>
+  document.addEventListener("DOMContentLoaded", () => {
+    let timerInterval = null;
+    let currentMinutePassed = 0;
+    let currentHourPassed = 0;
+
+    function parseHour(timeStr) {
+      const [hour, minute] = timeStr.split(":").map(Number);
+      return { hour: hour % 12 || 12, rawHour: hour, minute };
+    }
+
+    function displaySplashScreen() {
+      const splash = document.getElementById("splash-screen");
+      const loginPage = document.getElementById("loginPage");
+      setTimeout(() => {
+        splash.style.opacity = 0;
+        setTimeout(() => {
+          splash.style.display = "none";
+          loginPage.style.display = "block";
+        }, 500);
+      }, 1000);
+    }
+
+    function displaySplashForApi(display) {
+      const splash = document.getElementById("splash-screen");
+      splash.style.display = display;
+    }
+
+    function startTimer(startHour, endHour) {
+      const timer = document.getElementById("timer");
+
+
+      const totalHours = (endHour - startHour + 12) % 12 || 12;
+      const totalMinutes = totalHours * 60;
+      const degreePerHour = 360 / totalHours;
+
+      timer.innerHTML = '<div class="fill-ring" id="fillRing"></div>' + timer.innerHTML;
+      const fillRing = document.getElementById("fillRing");
+      const ticks = [];
+
+      for (let i = 0; i < totalHours; i++) {
+        const tick = document.createElement("div");
+        tick.classList.add("tick");
+        tick.style.transform = `rotate(${i * degreePerHour}deg)`;
+        timer.appendChild(tick);
+        ticks.push(tick);
+      }
+
+      timerInterval = setInterval(() => {
+        const hourLabel = document.getElementById("hourLabel");
+        const elapsed = currentHourPassed * 60 + currentMinutePassed;
+        const remaining = totalMinutes - elapsed;
+        const angle = (elapsed / totalMinutes) * 360;
+
+        fillRing.style.background = `conic-gradient(#00c9b7 ${angle}deg, white ${angle}deg)`;
+
+        if (currentMinutePassed === 0 && currentHourPassed < totalHours) {
+          ticks[currentHourPassed].classList.add("active");
+        }
+
+        const hrs = Math.floor(remaining / 60);
+        const mins = remaining % 60;
+        hourLabel.innerText = `${hrs}:${mins.toString().padStart(2, '0')}`;
+        console.log(`${hrs}:${mins.toString().padStart(2, '0')}`)
+
+        currentMinutePassed++;
+        if (currentMinutePassed >= 60) {
+          currentMinutePassed = 0;
+          currentHourPassed++;
+        }
+
+        if (elapsed >= totalMinutes) {
+          clearInterval(timerInterval);
+          hourLabel.innerText = `0:00`;
+        }
+      }, 60000); // 1 minute interval
+    }
+
+    function stopTimer() {
+      clearInterval(timerInterval);
+      document.getElementById("timer").innerHTML = `
+        <div class="center-label">
+          <h1 id="hourLabel">0:00</h1>
+          <p>hrs left</p>
+        </div>`;
+      currentMinutePassed = 0;
+      currentHourPassed = 0;
+    }
+
+    displaySplashScreen();
+
+    const loginBtn = document.querySelector("button[type='submit']");
+    const emailInput = document.getElementById("email");
+    const passwordInput = document.getElementById("password");
+
+    loginBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      const email = emailInput.value;
+      const password = passwordInput.value;
+
+
+      document.getElementById("empName").innerText = "Demo";
+          document.getElementById("empShift").innerText = "Demo";
+          document.getElementById("loginPage").style.display = "none";
+          document.getElementById("dashboard").style.display = "block";
+          startTimer(1, 9);
+      return;
+      displaySplashForApi("block");
+
+      try {
+        const response = await window.pywebview.api.login(email, password);
+        const { status, data } = JSON.parse(response);
+
+        if (status) {
+          displaySplashForApi("none");
+          const empName = `${data.EmpFirstName} ${data.EmpLastName}`;
+          const empShift = `${data.ShiftStartTime} to ${data.ShiftEndTime}`;
+
+          const { hour: startHour } = parseHour(data.ShiftStartTime);
+          const { hour: endHour } = parseHour(data.ShiftEndTime);
+
+          document.getElementById("empName").innerText = empName;
+          document.getElementById("empShift").innerText = empShift;
+          document.getElementById("loginPage").style.display = "none";
+          document.getElementById("dashboard").style.display = "block";
+
+          localStorage.setItem("user_data", JSON.stringify(data));
+
+          console.log(startHour)
+      console.log(endHour)
+          startTimer(startHour, endHour);
+        } else {
+          displaySplashForApi("none");
+          alert("Invalid login.");
+        }
+      } catch (err) {
+        console.error("Login failed:", err);
+        displaySplashForApi("none");
+        alert("Login error.");
+      }
+    });
+
+    const logoutBtn = document.getElementById("logout");
+    logoutBtn.addEventListener("click", async () => {
+      const userData = JSON.parse(localStorage.getItem("user_data") || "{}");
+      try {
+        await window.pywebview.api.logout(
+          userData.EID || "",
+          userData.EOD || "",
+          userData.TotalChats || 0,
+          userData.TotalBillableChat || 0
+        );
+      } catch (err) {
+        console.warn("Logout API failed, proceeding anyway");
+      }
+      stopTimer();
+      localStorage.clear();
+      document.getElementById("dashboard").style.display = "none";
+      document.getElementById("loginPage").style.display = "block";
+    });
+  });
+</script>
+
+
+<!--        <script src="assets/js/custom.js"></script>-->
+    </body>
+</html>

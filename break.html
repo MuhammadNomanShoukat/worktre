@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Trigger Python from JS</title>
+        <link href="assets/css/bootstrap.min.css" rel="stylesheet" />
+        <script src="assets/js/bootstrap.bundle.min.js"></script>
+        <link rel="stylesheet" href="assets/css/all.min.css" />
+        <link rel="stylesheet" type="text/css" href="assets/css/style.css" />
+    </head>
+    <style>
+        body{
+            height:unset;
+            width: unset;
+
+        }
+  .timer-content .timer-container {
+    position: relative;
+    width: 194px;
+    height: 196px;
+    top: 16px;
+    left: 0px;
+    border-radius: 50%;
+    overflow: hidden;
+  }
+
+  .timer-content .fill-ring {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: conic-gradient(#00c9b7 0deg, white 0deg);
+    z-index: 1;
+    transition: background 0.2s linear;
+  }
+
+  .tick {
+  position: absolute;
+  width: 5px;
+  height: 12px;
+  background-color: #ddd;
+  top: 0;
+  left: 50%;
+  transform-origin: center 95px;
+  border-radius: 3px;
+  transition: background-color 0.3s ease;
+  z-index: 2;
+}
+
+  .timer-content .tick.active {
+    background-color: #00c9b7;
+  }
+
+  .timer-content .center-label {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    z-index: 3;
+  }
+
+  .timer-content .center-label h1 {
+    margin: 0;
+    font-size: 3rem;
+    font-weight: bold;
+    color: #062c33;
+  }
+
+  .timer-content .center-label p {
+    margin: 0;
+    font-size: 14px;
+    color: #062c33;
+    line-height: 0.8;
+  }
+
+
+  .break-wrapper {
+
+    margin: 23px 32px;
+}
+
+
+        .break-wrapper .break-type-wrapper {
+    padding: 15px 15px;
+}
+
+        footer{
+                position: absolute;
+                bottom: 0;
+                width: 100%;
+        }
+
+        #break{
+            padding: 17px 10px;
+
+        }
+
+        .break-wrapper textarea{
+            min-height: 105px;
+        }
+
+        .break-wrapper button {
+            width: 100%;
+
+            float: unset;
+        }
+
+        .break-wrapper {
+
+            border-radius: 10px;
+
+        }
+</style>
+
+    <body>
+        <!-- Splash Loader -->
+
+        <span id="empty_element"></span>
+
+        <!-- Main Login Page -->
+
+
+        <!-- Dashboard Page -->
+        <section id="dashboard" >
+            <nav class="navigations">
+                <div class="row align-items-center">
+                    <div class="col-6">
+                        <div class="main-logo" id="main-dashboard-logo">
+                            <img src="assets/images/logo.png" alt="main-logo" width="100%" />
+                        </div>
+                    </div>
+                    <div class="col-8">
+
+                    </div>
+                </div>
+            </nav>
+
+
+            <main id="break" >
+                <div class="row">
+                    <div class="col-12">
+                        <div class="break-wrapper">
+                            <div class="row align-items-center">
+                                <div class="col-12">
+                                    <div class="break-type-wrapper">
+                                        <h1>Inactivity</h1>
+                                        <form>
+
+                                            <div class="form-group">
+                                              <textarea id="comment" placeholder="Comment" row="10" cols="10"></textarea>
+                                            </div>
+
+                                            <button type="submit">Submit</button>
+                                        </form>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            <footer>
+                <p>Powered by Bioncos Global</p>
+            </footer>
+        </section>
+
+
+
+
+<script>
+    function showBreakPopup() {
+        alert("⚠️ You have been inactive for too long. Please take a break!");
+    }
+</script>
+
+
+
+
+<!--        <script src="assets/js/custom.js"></script>-->
+    </body>
+</html>
