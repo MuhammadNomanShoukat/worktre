@@ -1,27 +1,22 @@
-; Inno Setup script to package PyInstaller app
+; Inno Setup script to package PyInstaller exe into a real Windows installer
 
 [Setup]
 AppName=WorkTree
 AppVersion=1.0.0
 DefaultDirName={pf}\WorkTree
 DefaultGroupName=WorkTree
-OutputDir=output
-OutputBaseFilename=WorkTree_Installer_v1.0.0
+OutputBaseFilename=WorkTreeInstaller
 Compression=lzma
 SolidCompression=yes
 DisableProgramGroupPage=yes
-PrivilegesRequired=admin
 
 [Files]
-; ✅ Main app executable
+; Adjust path to your built exe
+
 Source: "dist\main.exe"; DestDir: "{app}"; DestName: "WorkTree.exe"; Flags: ignoreversion
-
-; ✅ HTML entry point
-Source: "index.html"; DestDir: "{app}"; Flags: ignoreversion
-Source: "break.html"; DestDir: "{app}"; Flags: ignoreversion
-
-; ✅ All assets recursively in one line
-Source: "assets\*"; DestDir: "{app}\assets"; Flags: recursesubdirs createallsubdirs ignoreversion
+Source: "assets\js\*"; DestDir: "{app}\assets\js"; Flags: recursesubdirs createallsubdirs
+Source: "assets\css\*"; DestDir: "{app}\assets\css"; Flags: recursesubdirs createallsubdirs
+Source: "assets\images\*"; DestDir: "{app}\assets\images"; Flags: recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\WorkTree"; Filename: "{app}\WorkTree.exe"

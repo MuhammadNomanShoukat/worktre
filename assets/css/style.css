@@ -403,7 +403,8 @@
      border-radius: 36px;
 }
 
-#breakModal .modal-content{
+#breakModal .modal-content,
+#inactivityModal .modal-content{
     border-radius: 36px;
 }
 
@@ -447,7 +448,7 @@
      resize: none;
 }
  .break-wrapper button {
-     width: 20%;
+     width: 40%;
      padding: 0px;
      background-color: #000;
      color: #fff;

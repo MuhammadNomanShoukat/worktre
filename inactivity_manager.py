@@ -13,69 +13,81 @@ def get_idle_duration():
     millis = ctypes.windll.kernel32.GetTickCount() - lii.dwTime
     return millis / 1000.0
 
-def show_message_box(title, message):
-    def _show():
-        ctypes.windll.user32.MessageBoxW(0, message, title, 0x40 | 0x1)
-    threading.Thread(target=_show, daemon=True).start()
+def get_log_file_path():
+    log_dir = os.path.join(os.getenv("APPDATA"), "MyAppLogs")
+    os.makedirs(log_dir, exist_ok=True)
+    return os.path.join(log_dir, "inactivity.log")
 
 def log(text):
-    with open("inactivity.log", "a", encoding="utf-8") as f:
-        f.write(text + "\n")
+    try:
+        log_file = get_log_file_path()
+        with open(log_file, "a", encoding="utf-8") as f:
+            f.write(text + "\n")
+    except Exception as e:
+        print(f"[Logging Error] {e}")
 
-# === Inactivity Timer State ===
+# === Global State ===
 _inactivity_thread = None
 _stop_flag = threading.Event()
+_reset_flag = threading.Event()
+_lock_after_min = False
+_locked_time_start = None  # When inactivity was marked
 
 def start_inactivity_timer(min_minutes: float, max_minutes: float, on_warn=None, on_exit=None):
-    """
-    Starts the inactivity monitor.
-    - min_minutes: Minutes after which to show alert (0 = disable)
-    - max_minutes: Minutes after which to exit app (0 = disable)
-    - on_warn: Callback function for warning
-    - on_exit: Callback function before exit
-    """
-    global _inactivity_thread, _stop_flag
-
-    if min_minutes <= 0 and max_minutes <= 0:
-        log("🚫 Inactivity monitor disabled (min=0, max=0).")
-        return
+    global _inactivity_thread, _stop_flag, _reset_flag, _lock_after_min, _locked_time_start
 
     _stop_flag.clear()
-    log(f"🟢 Inactivity monitor started: min={min_minutes}min, max={max_minutes}min")
+    _reset_flag.clear()
+    _lock_after_min = False
+    _locked_time_start = None
 
     min_seconds = min_minutes * 60
     max_seconds = max_minutes * 60
 
+    log(f"🟢 Inactivity monitor started: min={min_minutes}min, max={max_minutes}min")
+
     def monitor():
-        warning_shown = False
+        global _lock_after_min, _locked_time_start
 
         while not _stop_flag.is_set():
-            idle_time = int(get_idle_duration())
-            log(f"Idle for {idle_time} second(s)...")
+            idle_time = get_idle_duration()
+            log(f"Idle for {int(idle_time)}s | Locked: {_lock_after_min}")
 
-            if max_seconds > 0 and idle_time >= max_seconds:
-                log(f"⛔ Inactive for {max_minutes} minutes. Exiting.")
-                if on_exit:
-                    try:
-                        on_exit()
-                    except Exception as e:
-                        log(f"Error in on_exit callback: {e}")
-                show_message_box("Inactivity Timeout", f"You were inactive for {max_minutes} minutes. Exiting.")
-                time.sleep(2)
-                os._exit(0)
+            # ✅ Once locked (after min), count time until max is hit
+            if _lock_after_min:
+                if _locked_time_start is None:
+                    _locked_time_start = time.time()
+                    log("⏸️ Inactivity marked. Tracking max time from now.")
 
-            if min_seconds > 0 and idle_time >= min_seconds and not warning_shown:
-                log(f"⚠️ Warning: Inactive for {min_minutes} minutes.")
+                elapsed_since_lock = time.time() - _locked_time_start
+
+                if elapsed_since_lock >= (max_seconds - min_seconds):
+                    log("⛔ Maximum inactivity time reached. Exiting.")
+                    if on_exit:
+                        try: on_exit()
+                        except Exception as e: log(f"Error in on_exit callback: {e}")
+                    time.sleep(1)
+                    os._exit(0)
+
+            # ✅ First time reaching min — lock inactivity state
+            if idle_time >= min_seconds and not _lock_after_min:
+                log(f"⚠️ Minimum inactivity reached ({min_minutes}m). Locking timer.")
+                _lock_after_min = True
+                _locked_time_start = time.time()
                 if on_warn:
-                    try:
-                        on_warn()
-                    except Exception as e:
-                        log(f"Error in on_warn callback: {e}")
-                show_message_box("Inactivity Warning", f"You have been inactive for {min_minutes} minutes.")
-                warning_shown = True
+                    try: on_warn()
+                    except Exception as e: log(f"Error in on_warn callback: {e}")
 
-            if idle_time < min_seconds:
-                warning_shown = False
+            # ✅ Manual reset
+            if _reset_flag.is_set():
+                log("🔄 Manual reset called. Unlocking inactivity state.")
+                _reset_flag.clear()
+                _lock_after_min = False
+                _locked_time_start = None
+
+            # ✅ If not yet locked and user active, reset inactivity clock (implicitly via OS idle time)
+            if not _lock_after_min and idle_time < min_seconds:
+                log("🕹️ User activity detected before min. Timer stays fresh.")
 
             time.sleep(1)
 
@@ -83,6 +95,12 @@ def start_inactivity_timer(min_minutes: float, max_minutes: float, on_warn=None,
     _inactivity_thread.start()
 
 def stop_inactivity_timer():
-    global _stop_flag
     _stop_flag.set()
     log("🛑 Inactivity monitor stopped.")
+
+def reset_idle_timer():
+    """
+    Reset the locked inactivity state, only works after min is exceeded.
+    """
+    global _reset_flag
+    _reset_flag.set()

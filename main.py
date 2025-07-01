@@ -1,4 +1,4 @@
-from inactivity_manager import start_inactivity_timer, stop_inactivity_timer
+from inactivity_manager import start_inactivity_timer, stop_inactivity_timer, reset_idle_timer
 import webview
 import sys
 import os
@@ -300,7 +300,7 @@ class API:
             json_response = json.dumps(resp)
             return json_response
 
-    def inactivity(self, userid, breaktype):
+    def inactivity(self, userid, breaktype="inactivity"):
         computer_name = socket.gethostname()
 
         # Headers for the SOAP request
@@ -327,14 +327,22 @@ class API:
         # Endpoint URL
         url = "https://worktre.com:443/webservices/worktre_soap_2.0/services.php/breakout"
 
+        print("============")
+        print(headers)
+        # print(headers)
+        # print(payload)
+
+
         # Send the POST request
         try:
             response = requests.post(url, data=payload, headers=headers, timeout=10)
 
             soap_response = response.text
-            print("SOAP Response:", soap_response)
+            # print("SOAP Response:", soap_response)
         except requests.exceptions.RequestException as e:
             return json.dumps({"status": False, "msg": "Request failed", "data": {"error": str(e)}})
+
+
 
         try:
             # Parse the SOAP response
@@ -351,6 +359,10 @@ class API:
         # Find the response element
         return_element = root.find('.//ns1:inactivityResponse/return', namespaces)
 
+        # print(response)
+        # print(return_element)
+        print("====================")
+
         if return_element is not None:
             result = {
                 "message": return_element.text or "Success"
@@ -360,6 +372,157 @@ class API:
             return json.dumps({"status": False, "msg": "No response data", "data": {}})
 
 
+    def logoutinactivity(self, userid, breaktype="inactivity"):
+        # Endpoint URL
+        url = "https://worktre.com:443/webservices/worktre_soap_2.0/services.php"
+
+        # Headers
+        headers = {
+            "Content-Type": "text/xml; charset=utf-8",
+            "SOAPAction": "https://worktre.com/webservices/worktre_soap_2.0/services.php/logoutinactivity",
+        }
+
+        # SOAP request payload
+        payload = f"""<?xml version="1.0" encoding="UTF-8"?>
+        <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                          xmlns:web="https://worktre.com/">
+           <soapenv:Header/>
+           <soapenv:Body>
+              <web:logoutinactivity>
+                 <userid>{userid}</userid>
+                 <breaktype>{breaktype}</breaktype>
+              </web:logoutinactivity>
+           </soapenv:Body>
+        </soapenv:Envelope>
+        """
+
+        # Send the POST request
+        response = requests.post(url, data=payload, headers=headers, timeout=10)
+
+        soap_response = response.text
+
+        # Parse the SOAP response
+        root = ET.fromstring(soap_response)
+
+        # Define namespaces
+        namespaces = {
+            'SOAP-ENV': 'http://schemas.xmlsoap.org/soap/envelope/',
+            'ns1': 'https://worktre.com/',
+            'xsi': 'http://www.w3.org/2001/XMLSchema-instance',
+            'SOAP-ENC': 'http://schemas.xmlsoap.org/soap/encoding/'
+        }
+
+        # Find the 'return' element
+        return_element = root.find('.//ns1:logoutinactivityResponse/return', namespaces)
+
+        print("==========")
+        print(headers)
+        # print(payload)
+        # print(response)
+        # print(soap_response)
+        # print(return_element)
+        print("==========")
+
+        if return_element is not None:
+            items = return_element.findall('item', namespaces)
+
+            # Get the keys (first element)
+            keys = items[0].text.split(",") if items[0].text else []
+
+            # Strip extra spaces in keys
+            keys = [key.strip() for key in keys]
+
+            # Get the values (remaining elements)
+            values = [item.text or "" for item in items[1:]]
+
+            result = {}
+            for i in range(len(keys)):
+                key = keys[i]
+                value = values[i]
+                result[key] = value
+
+            resp = {"status": True, "data": result}
+            json_response = json.dumps(resp)
+            return json_response
+        else:
+            resp = {"status": True, "data": {}}
+            json_response = json.dumps(resp)
+            return json_response
+
+    def crashlogin(self, userid, breaktype, onbreak):
+        computer_name = socket.gethostname()
+        ip = get_dynamic_ip()
+        # Headers
+        headers = {
+            "Content-Type": "text/xml; charset=utf-8",
+            "SOAPAction": "https://worktre.com/webservices/worktre_soap_2.0/services.php/crashlogin",
+        }
+
+        # SOAP request payload
+        payload = f"""<?xml version="1.0" encoding="UTF-8"?>
+        <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                          xmlns:web="https://worktre.com/">
+           <soapenv:Header/>
+           <soapenv:Body>
+              <web:crashlogin>
+                 <userid>{userid}</userid>
+                 <breaktype>{breaktype}</breaktype>
+                 <onbreak>{onbreak}</onbreak>
+                 <ComputerName>{computer_name}</ComputerName>
+                 <wtversion>2.0</wtversion>
+                 <ipaddress>{ip}</ipaddress>
+              </web:crashlogin>
+           </soapenv:Body>
+        </soapenv:Envelope>
+        """
+
+        # Send the POST request
+        response = requests.post(url, data=payload, headers=headers, timeout=10)
+
+        soap_response = response.text
+        print("CrashLogin API Resp:",soap_response)
+
+        # Parse the SOAP response
+        root = ET.fromstring(soap_response)
+
+        # Find the 'return' element
+        namespaces = {
+            'SOAP-ENV': 'http://schemas.xmlsoap.org/soap/envelope/',
+            'ns1': 'https://worktre.com/',
+            'xsi': 'http://www.w3.org/2001/XMLSchema-instance',
+            'SOAP-ENC': 'http://schemas.xmlsoap.org/soap/encoding/'
+        }
+
+        return_element = root.find('.//ns1:crashloginResponse/return', namespaces)
+
+        if return_element is not None:
+            items = return_element.findall('item', namespaces)
+
+            # Get the keys (first element)
+            keys = items[0].text.split(",") if items[0].text else []
+
+            # Strip extra spaces in keys
+            keys = [key.strip() for key in keys]
+            print("KEYS : ", keys)
+            # Get the values (remaining elements)
+            values = [item.text or "" for item in items[1:]]
+            print("Values : ", values)
+            result = {}
+            for i in range(len(keys)):
+                try:
+                    key = keys[i]
+                    value = values[i]
+                    result[key] = value
+                except:
+                    pass
+
+            resp = {"status": True, "data": result}
+            json_response = json.dumps(resp)
+            return json_response
+        else:
+            resp = {"status": True, "data": {}}
+            json_response = json.dumps(resp)
+            return json_response
 
     def logout(self, userid, eod, total_chats, total_billable_chats):
 
@@ -555,11 +718,13 @@ class API:
         # Check for breakoutResponse
         return_element = root.find('.//ns1:breakoutResponse', namespaces)
 
-        # print("==========")
+        print("==========")
+        print(headers)
+        # print(payload)
         # print(response)
         # print(soap_response)
         # print(return_element)
-        # print("==========")
+        print("==========")
         # return
 
         if return_element is not None:
@@ -651,8 +816,8 @@ class API:
     def handleForgetPassword(self, email):
         print(f"Forgot Password requested for: {email}")
 
-    def handleRegister(self, email):
-        print(f"Register requested for: {email}")
+    def resetInactivityTimer(self):
+        reset_idle_timer()
 
 # ---------------------- Path Helper ----------------------
 

@@ -350,48 +350,89 @@
 
             <!-- Modal -->
             <!-- Modal -->
-<div class="modal fade" id="breakModal" tabindex="-1" aria-labelledby="breakModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-xl">
-    <div class="modal-content">
-      <div class="modal-body p-0" id="break">
-        <div class="row">
-          <div class="col-12">
-            <div class="break-wrapper">
-              <div class="row">
-                <div class="col-6">
-                  <div class="break-type-wrapper">
-                    <h1>Select Break type</h1>
-                    <form>
-                      <div class="form-group">
-                        <select id="break_type">
-                          <option value="training">Trainings</option>
-                          <option value="meeting">Meeting</option>
-                          <option value="lunch_break">Lunch Break</option>
-                          <option value="tea_break">Tea Break</option>
-                          <option value="awei_break">Awei Break</option>
-                        </select>
+            <div class="modal fade" id="breakModal" tabindex="-1" aria-labelledby="breakModalLabel" aria-hidden="true">
+              <div class="modal-dialog modal-dialog-centered modal-xl">
+                <div class="modal-content">
+                  <div class="modal-body p-0" id="break">
+                    <div class="row">
+                      <div class="col-12">
+                        <div class="break-wrapper">
+                          <div class="row">
+                            <div class="col-6">
+                              <div class="break-type-wrapper">
+                                <h1>Select Break type</h1>
+                                <form>
+                                  <div class="form-group">
+                                    <select id="break_type">
+                                      <option value="training">Trainings</option>
+                                      <option value="meeting">Meeting</option>
+                                      <option value="lunch_break">Lunch Break</option>
+                                      <option value="tea_break">Tea Break</option>
+                                      <option value="awei_break">Awei Break</option>
+                                    </select>
+                                  </div>
+                                  <div class="form-group">
+                                    <textarea id="comment" placeholder="Comment"></textarea>
+                                  </div>
+                                  <button type="submit">Submit</button>
+                                </form>
+                              </div>
+                            </div>
+                            <div class="col-6">
+                              <div class="break-logo-wrapper">
+                                <img src="assets/images/break-logo.png" alt="break-logo" width="100%" />
+                                <img src="assets/images/cross.png" alt="break-logo" width="9%" class="cross-icon" data-bs-dismiss="modal" aria-label="Close"/>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                      <div class="form-group">
-                        <textarea id="comment" placeholder="Comment"></textarea>
-                      </div>
-                      <button type="submit">Submit</button>
-                    </form>
-                  </div>
-                </div>
-                <div class="col-6">
-                  <div class="break-logo-wrapper">
-                    <img src="assets/images/break-logo.png" alt="break-logo" width="100%" />
-                    <img src="assets/images/cross.png" alt="break-logo" width="9%" class="cross-icon" data-bs-dismiss="modal" aria-label="Close"/>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
+
+            <div class="modal fade"
+     id="inactivityModal"
+     tabindex="-1"
+     aria-labelledby="breakModalLabel"
+     aria-hidden="true"
+     data-bs-backdrop="static"
+     data-bs-keyboard="false">
+              <div class="modal-dialog modal-dialog-centered modal-xl">
+                <div class="modal-content">
+                  <div class="modal-body p-0" id="inactivity">
+                    <div class="row">
+                      <div class="col-12">
+                        <div class="break-wrapper">
+                          <div class="row">
+                            <div class="col-6">
+                              <div class="break-type-wrapper">
+                                <h1>Inactivity</h1>
+                                <form>
+                                  <div class="form-group">
+                                    <textarea id="comment2" placeholder="Comment"></textarea>
+                                  </div>
+                                  <button type="submit">End Break</button>
+                                </form>
+                              </div>
+                            </div>
+                            <div class="col-6">
+                              <div class="break-logo-wrapper">
+                                <img src="assets/images/break-logo.png" alt="break-logo" width="100%" />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+
 
 
             <footer>
@@ -763,6 +804,24 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     });
 
+    const form = document.querySelector('#inactivityModal form');
+
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault(); // Prevent form from reloading the page
+
+      const comment = document.getElementById('comment2').value.trim();
+
+
+
+      // Log or send data (optional)
+      console.log("Break reason submitted:", comment);
+
+      // Call your function to hide the modal
+      hideInactivityModal();
+      await callBreakOutAPI(comment)
+      window.pywebview.api.resetInactivityTimer()
+    });
+
 
 
 
@@ -830,7 +889,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
 
-    async function callBreakOutAPI(){
+    async function callBreakOutAPI(breakType){
         try{
             const userData = JSON.parse(localStorage.getItem("user_data") || "{}");
             const comment = document.getElementById("comment").value;
@@ -840,13 +899,56 @@ document.addEventListener("DOMContentLoaded", async () => {
                 breakType,
                 comment
             );
-            console.log(response)
+
+            console.log("callBreakOutAPI: ", response)
         }catch(err){
             console.error("Break out API error")
         }
     }
 
-    document.getElementById("logout").addEventListener("click", async () => {
+    async function callInactivityAPI(){
+        try{
+            const userData = JSON.parse(localStorage.getItem("user_data") || "{}");
+            const comment = document.getElementById("comment2").value;
+               console.log(comment)
+
+            const response = await window.pywebview.api.inactivity(
+                userData.EID,
+                "inactivity"
+            );
+            console.log("callInactivityAPI: ", response)
+        }catch(err){
+            console.error("Inactivity API error")
+        }
+    }
+
+    async function callLogoutInactivityAPI(){
+        try{
+            const userData = JSON.parse(localStorage.getItem("user_data") || "{}");
+            const comment = document.getElementById("comment2").value;
+               console.log(comment)
+            const response = await window.pywebview.api.logoutinactivity(
+                userData.EID
+            );
+            console.log("callLogoutInactivityAPI: ", response)
+        }catch(err){
+            console.error("callLogoutInactivityAPI API error")
+        }
+    }
+
+    async function logoutInactivityAPI(){
+        try{
+            const userData = JSON.parse(localStorage.getItem("user_data") || "{}");
+            const response = await window.pywebview.api.logoutinactivity(
+                userData.EID
+            );
+            console.log("logoutInactivityAPI: ", response)
+        }catch(err){
+            console.error("Inactivity API error")
+        }
+    }
+
+    async function logoutAPI(){
         try {
             const userData = JSON.parse(localStorage.getItem("user_data") || "{}");
             await window.pywebview.api.logout(
@@ -868,6 +970,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         } catch (err) {
             console.warn("Logout API failed, proceeding anyway");
         }
+    }
+
+    document.getElementById("logout").addEventListener("click", async () => {
+        await logoutAPI()
     });
 
     document.querySelector(".cross-icon").addEventListener("click", () => {
@@ -949,13 +1055,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     }, 1000);
 
 
-    window.showInactivityWarningModal = function () {
+    window.showInactivityWarningModal = async function () {
+        showInactivityModal()
+        await callInactivityAPI()
         console.log("⚠️ Inactivity triggered from Python");
 
     }
 
-    window.inactivityTimeExceed = function () {
+    window.inactivityTimeExceed = async function () {
         console.log("⚠️ inactivityTimeExceed");
+        await callLogoutInactivityAPI()
     }
 
 <!--    function showInactivityModal() {-->
@@ -966,7 +1075,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 <!--        modal.show();-->
 <!--    }-->
 
-    window.showBreakModal = function () {
+    window.showBreakModal = function (inactivity=false) {
         const modalEl = document.getElementById('breakModal');
         let modalInstance = bootstrap.Modal.getInstance(modalEl);
         if (!modalInstance) {
@@ -975,6 +1084,20 @@ document.addEventListener("DOMContentLoaded", async () => {
         modalInstance.show();
       };
 
+      window.showInactivityModal = function (inactivity = false) {
+          const modalEl = document.getElementById('inactivityModal');
+          let modalInstance = bootstrap.Modal.getInstance(modalEl);
+
+          if (!modalInstance) {
+            modalInstance = new bootstrap.Modal(modalEl, {
+              backdrop: 'static', // Don't close on click outside
+              keyboard: false     // Don't close on ESC key
+            });
+          }
+
+          modalInstance.show();
+        };
+
      function hideBreakModal() {
         const modal = bootstrap.Modal.getInstance(document.getElementById('breakModal'));
         if (modal) {
@@ -982,6 +1105,18 @@ document.addEventListener("DOMContentLoaded", async () => {
         } else {
           // If it's not already instantiated (e.g., opened via JS), do this:
           const instance = new bootstrap.Modal(document.getElementById('breakModal'));
+          instance.hide();
+        }
+      }
+
+      function hideInactivityModal() {
+        document.getElementById('comment2').value = ""
+        const modal = bootstrap.Modal.getInstance(document.getElementById('inactivityModal'));
+        if (modal) {
+          modal.hide();
+        } else {
+          // If it's not already instantiated (e.g., opened via JS), do this:
+          const instance = new bootstrap.Modal(document.getElementById('inactivityModal'));
           instance.hide();
         }
       }
