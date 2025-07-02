@@ -142,7 +142,7 @@
                                     </div>
 
                                     <div class="mb-3 link">
-                                        <p>Don't have an account? <a href="#" id="register">Sign Up Here</a></p>
+                                        <p id="ip_link">&nbsp;</p>
                                     </div>
                                 </form>
                             </div>
@@ -449,8 +449,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     let currentHourPassed = 0;
     let currentMinutePassed = 0;
     let breakMinutesPassed = 0;
-
-    const totalBreakMinutes = 15;
+    let totalBreakMinutes = 0;
 
     let shiftTicks = [];
     let breakTicks = [];
@@ -550,7 +549,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 clearInterval(shiftTimerInterval);
                 hourLabel.innerText = `0:00`;
             }
-        }, 1000);
+        }, 60000);
     }
 
 
@@ -594,7 +593,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             breakEndElem.innerText = "";
         }
 
-        breakTimerInterval = setInterval(() => {
+        breakTimerInterval = setInterval(async () => {
             if (breakMinutesPassed < totalBreakMinutes) {
                 breakTicks[breakMinutesPassed]?.classList.add("active");
 
@@ -623,8 +622,10 @@ document.addEventListener("DOMContentLoaded", async () => {
                 document.getElementById("play").style.pointerEvents = "auto";
                 document.getElementById("play").style.opacity = "1";
                 document.getElementById("breakCircle").classList.remove("active");
+
+                await window.pywebview.api.start_inactivity();
             }
-        }, 1000);
+        }, 60000);
     }
 
     function formatTime(date) {
@@ -757,11 +758,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         try {
             const response = await window.pywebview.api.login(email, password);
             const { status, data } = JSON.parse(response);
-            console.log(status)
-            console.log(data)
-            if (status) {
+
+            if (status && Object.keys(data).length>0) {
                 const empName = `${data.EmpFirstName} ${data.EmpLastName}`;
                 const empShift = `${formatTimeForDisplay(data.ShiftStartTime)} - ${formatTimeForDisplay(data.ShiftEndTime)}`;
+                totalBreakMinutes = data.InactivityBreakTime
 
                 const { hours: startHrs, minutes: startMins } = parseTime(data.ShiftStartTime);
                 const { hours: endHrs, minutes: endMins } = parseTime(data.ShiftEndTime);
@@ -778,6 +779,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
                 localStorage.setItem("user_data", JSON.stringify(data));
 
+                document.getElementById("ip_link").innerHTML = "&nbsp;";
                 document.getElementById("login_time").innerText = formattedLoginTime;
                 document.getElementById("empName").innerText = empName;
                 document.getElementById("empShift").innerText = empShift;
@@ -786,14 +788,19 @@ document.addEventListener("DOMContentLoaded", async () => {
                 document.getElementById("dashboard").style.display = "block";
                 document.getElementById("loginCircle").classList.add("active");
 
+
+
                 resetAllTimers();
                 createShiftTicks(totalShiftMinutes);
                 createBreakTicks();
-
                 startShiftTimer(totalShiftMinutes);
+
+                await getServiceAPI()
             } else {
+                console.log(data)
                 if(data.IPAddresNotFound === 'Invalid IP Address'){
                     alert("Your IP address is not registered. ");
+                    document.getElementById("ip_link").innerHTML = "Your Ip is not registered with WORKTRE. Please "+ ' <a href="#">Click Here</a> ' +" to send request for access"
                 }else{
                     alert("Invalid username or password.");
                 }
@@ -948,6 +955,19 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     }
 
+    async function getServiceAPI(){
+        try{
+            const userData = JSON.parse(localStorage.getItem("user_data") || "{}");
+            const response = await window.pywebview.api.getservice(
+                userData.EID
+            );
+            console.log("getServiceAPI: ", JSON.parse(response))
+
+        }catch(err){
+            console.error("getServiceAPI API error")
+        }
+    }
+
     async function logoutAPI(){
         try {
             const userData = JSON.parse(localStorage.getItem("user_data") || "{}");
@@ -1030,6 +1050,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             console.error("Failed to load remembered user", err);
         }
     }
+
+
 
     async function versionCheck(){
         try {

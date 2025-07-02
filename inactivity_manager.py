@@ -44,7 +44,7 @@ def start_inactivity_timer(min_minutes: float, max_minutes: float, on_warn=None,
     min_seconds = min_minutes * 60
     max_seconds = max_minutes * 60
 
-    log(f"🟢 Inactivity monitor started: min={min_minutes}min, max={max_minutes}min")
+    log(f"Inactivity monitor started: min={min_minutes}min, max={max_minutes}min")
 
     def monitor():
         global _lock_after_min, _locked_time_start
@@ -57,12 +57,12 @@ def start_inactivity_timer(min_minutes: float, max_minutes: float, on_warn=None,
             if _lock_after_min:
                 if _locked_time_start is None:
                     _locked_time_start = time.time()
-                    log("⏸️ Inactivity marked. Tracking max time from now.")
+                    log("Inactivity marked. Tracking max time from now.")
 
                 elapsed_since_lock = time.time() - _locked_time_start
 
                 if elapsed_since_lock >= (max_seconds - min_seconds):
-                    log("⛔ Maximum inactivity time reached. Exiting.")
+                    log("Maximum inactivity time reached. Exiting.")
                     if on_exit:
                         try: on_exit()
                         except Exception as e: log(f"Error in on_exit callback: {e}")
@@ -71,7 +71,7 @@ def start_inactivity_timer(min_minutes: float, max_minutes: float, on_warn=None,
 
             # ✅ First time reaching min — lock inactivity state
             if idle_time >= min_seconds and not _lock_after_min:
-                log(f"⚠️ Minimum inactivity reached ({min_minutes}m). Locking timer.")
+                log(f"Minimum inactivity reached ({min_minutes}m). Locking timer.")
                 _lock_after_min = True
                 _locked_time_start = time.time()
                 if on_warn:
@@ -80,14 +80,14 @@ def start_inactivity_timer(min_minutes: float, max_minutes: float, on_warn=None,
 
             # ✅ Manual reset
             if _reset_flag.is_set():
-                log("🔄 Manual reset called. Unlocking inactivity state.")
+                log("Manual reset called. Unlocking inactivity state.")
                 _reset_flag.clear()
                 _lock_after_min = False
                 _locked_time_start = None
 
             # ✅ If not yet locked and user active, reset inactivity clock (implicitly via OS idle time)
             if not _lock_after_min and idle_time < min_seconds:
-                log("🕹️ User activity detected before min. Timer stays fresh.")
+                log("User activity detected before min. Timer stays fresh.")
 
             time.sleep(1)
 
@@ -96,7 +96,7 @@ def start_inactivity_timer(min_minutes: float, max_minutes: float, on_warn=None,
 
 def stop_inactivity_timer():
     _stop_flag.set()
-    log("🛑 Inactivity monitor stopped.")
+    log("Inactivity monitor stopped.")
 
 def reset_idle_timer():
     """

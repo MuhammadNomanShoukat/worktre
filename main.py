@@ -14,20 +14,15 @@ import xml.etree.ElementTree as ET
 from cryptography.fernet import Fernet
 
 
-STORAGE_PATH = 'remember_me.json'
-KEY_PATH = 'remember_me.key'
-
-# Configure logging
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
-
-current_window = None
-
-# =============================
 
 APPDATA = os.path.join(os.environ.get("APPDATA", "."), "WorkTree")
 os.makedirs(APPDATA, exist_ok=True)
 
+# Save important files inside APPDATA path
+STORAGE_PATH = os.path.join(APPDATA, 'remember_me.json')
+KEY_PATH = os.path.join(APPDATA, 'remember_me.key')
+
+# Logging setup
 log_path = os.path.join(APPDATA, "log.txt")
 logging.basicConfig(
     filename=log_path,
@@ -35,7 +30,16 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(message)s",
     filemode="a"
 )
-logging.info("🚀 App started")
+logger = logging.getLogger(__name__)
+logger.info("🚀 App started")
+
+current_window = None
+logged_in_user_info = None
+
+interval_timer = None
+interval_lock = threading.Lock()
+repeat_interval_seconds = 0  # To store and reuse duration
+is_running = False           # Track whether timer is active
 
 def cleanup_temp_dir():
     temp_path = os.path.join(os.getcwd(), 'webview_temp')
@@ -93,27 +97,38 @@ def load_key():
 fernet = load_key()
 
 def save_remembered_user(email, password):
-    if email and password:
-        encrypted = fernet.encrypt(password.encode()).decode()
-        with open(STORAGE_PATH, 'w') as f:
-            json.dump({"email": email, "password": encrypted}, f)
-    elif os.path.exists(STORAGE_PATH):
-        os.remove(STORAGE_PATH)
+    try:
+        if email and password:
+            encrypted = fernet.encrypt(password.encode()).decode()
+
+            # Ensure the directory exists (safe if called multiple times)
+            os.makedirs(os.path.dirname(STORAGE_PATH), exist_ok=True)
+
+            # Save encrypted data
+            with open(STORAGE_PATH, 'w') as f:
+                json.dump({"email": email, "password": encrypted}, f)
+            logger.info("Remembered user saved successfully.")
+        elif os.path.exists(STORAGE_PATH):
+            os.remove(STORAGE_PATH)
+            logger.info("Remembered user file deleted.")
+    except Exception as e:
+        logger.error(f"Error saving remembered user: {e}")
 
 def get_remembered_user():
-    if os.path.exists(STORAGE_PATH):
-        with open(STORAGE_PATH, 'r') as f:
-            try:
+    try:
+        if os.path.exists(STORAGE_PATH):
+            with open(STORAGE_PATH, 'r') as f:
                 data = json.load(f)
                 data['password'] = fernet.decrypt(data['password'].encode()).decode()
-                print("Decrypted remembered data:", data)
+                logger.info("Remembered user loaded successfully.")
                 return data
-            except Exception as e:
-                print("Error reading remembered user:", e)
+    except Exception as e:
+        logger.error(f"Error reading remembered user: {e}")
     return {}
 
+
 def on_warning():
-    # print("⚠️ Handle warning: maybe update UI or notify frontend")
+    print("Handle warning: maybe update UI or notify frontend")
 
     try:
         if webview.windows:
@@ -122,12 +137,84 @@ def on_warning():
         with open("warn.log", "a", encoding="utf-8") as f:
             f.write(f"Error showing modal: {e}\n")
 
-
-
 def on_exit():
-    # print("⛔ Preparing to exit: save state or notify backend")
+    print("Preparing to exit: save state or notify backend")
     if webview.windows:
         webview.windows[0].evaluate_js("window.inactivityTimeExceed()")
+
+
+def on_interval_complete():
+    global interval_timer, is_running, logged_in_user_info
+
+    print("Interval completed!")
+
+    with interval_lock:
+        interval_timer = None
+        if is_running and repeat_interval_seconds > 0:
+            print("Restarting interval...")
+
+            if logged_in_user_info is not None:
+                API.lastactivitydate(logged_in_user_info["EID"], "", "", "")
+
+            interval_timer = threading.Timer(repeat_interval_seconds, on_interval_complete)
+            interval_timer.start()
+
+
+def start_get_service_interval(duration=300):
+    """
+    Start the repeating interval.
+    :param duration: Duration in seconds. If 0 or less, timer won't start.
+    """
+    global interval_timer, repeat_interval_seconds, is_running
+
+    with interval_lock:
+        if duration <= 0:
+            print("Timer duration is 0 or less. Timer will not start.")
+            return
+
+        if is_running:
+            print("Interval is already running.")
+            return
+
+        repeat_interval_seconds = duration
+        is_running = True
+        interval_timer = threading.Timer(duration, on_interval_complete)
+        interval_timer.start()
+
+        # Human-friendly message
+        minutes = duration / 60
+        if minutes >= 1:
+            print(f"Repeating interval started for {minutes:.2f} minutes.")
+        else:
+            print(f"Repeating interval started for {duration:.0f} seconds.")
+
+
+def stop_interval():
+    global interval_timer, is_running
+
+    with interval_lock:
+        if interval_timer is not None:
+            interval_timer.cancel()
+            interval_timer = None
+        is_running = False
+        print("Interval stopped and will no longer repeat.")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 class API:
     def __init__(self):
@@ -142,6 +229,8 @@ class API:
         self._warn_after = None
         self._kick_after = None
         self._warned = False
+
+        self.maximum_inactivity_logoutTime = 60  # minutes
 
 
 
@@ -160,7 +249,8 @@ class API:
         return {"success": email == "admin@admin.com" and password == "admin123"}
 
     def login(self, username, password, max_retries=2, delay=2):
-        logging.info("🔄 login")
+        global logged_in_user_info
+        logging.info("login")
         computer_name = socket.gethostname()
         ip = get_dynamic_ip()
         # Headers
@@ -196,36 +286,33 @@ class API:
                 if response.status_code == 200:
                     soap_response = response.text
                     user_info = self.process_soap_response(soap_response)
+
+
                     parsed = json.loads(user_info)
+
                     self.user_info = parsed["data"]
+                    logged_in_user_info = parsed["data"]
 
                     data = parsed["data"]
+                    status = parsed["status"]
+
+                    print("====")
+                    print(data.get("InactivityBreakTime"))
+                    print("====")
+
+                    if status:
+                        inactivity_break_time = data.get("InactivityBreakTime")
+                        start_get_service_interval()
+                        self.start_inactivity()
+
+
+                    if data and isinstance(data, dict):
+                        if data.get("LoginStatus") == "AlreadyLogin":
+                            self.crashlogin(data.get("EID", ""), "crash", "False")
 
 
 
-                    # ✅ Convert minutes → seconds
-                    # warn_after = int(data.get("InactivityBreakTime", 15)) * 60
-                    # warn_after = 1 * 60
-                    #
-                    # kick_after = 2 * 60
-                    #
-                    # print(f"[INFO] Warn after {warn_after}s, Kick after {kick_after}s")
-                    #
-                    # self._user_logged_in = True
-                    # self._stop_monitor.clear()
-                    #
-                    # self.start_inactivity_monitor(
-                    #     warn_after=warn_after,
-                    #     kick_after=kick_after,
-                    #     user_info=data,
-                    #     break_type="Short Break"
-                    # )
-                    threading.Thread(
-                        target=start_inactivity_timer,
-                        args=(0.5, 1),
-                        kwargs={"on_warn": on_warning, "on_exit": on_exit},
-                        daemon=True
-                    ).start()
+
                     # print("88888888:", json.loads(user_info)["data"]['InactivityBreakTime'])
 
 
@@ -480,6 +567,8 @@ class API:
         response = requests.post(url, data=payload, headers=headers, timeout=10)
 
         soap_response = response.text
+
+
         print("CrashLogin API Resp:",soap_response)
 
         # Parse the SOAP response
@@ -525,7 +614,7 @@ class API:
             return json_response
 
     def logout(self, userid, eod, total_chats, total_billable_chats):
-
+        global logged_in_user_info
         print("===================")
         print(self.user_info)
         print("===================")
@@ -570,6 +659,7 @@ class API:
 
         return_element = root.find('.//ns1:logoutResponse/return', namespaces)
         print("Logout API Resp:",return_element)
+        stop_interval()
         if return_element is not None:
             items = return_element.findall('item', namespaces)
 
@@ -590,11 +680,160 @@ class API:
 
             resp = {"status": True, "data": result}
             json_response = json.dumps(resp)
+            logged_in_user_info = None
             return json_response
         else:
             resp = {"status": True, "data": {}}
             json_response = json.dumps(resp)
             return json_response
+
+    @staticmethod
+    def lastactivitydate(userid, breakflag, idle_time_start, idle_time_end):
+        computer_name = socket.gethostname()
+
+        # Headers
+        headers = {
+            "Content-Type": "text/xml; charset=utf-8",
+            "SOAPAction": "https://worktre.com/webservices/worktre_soap_2.0/services.php/lastactivitydate",
+        }
+
+        # SOAP request payload
+        payload = f"""<?xml version="1.0" encoding="UTF-8"?>
+        <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                          xmlns:web="https://worktre.com/">
+           <soapenv:Header/>
+           <soapenv:Body>
+              <web:lastactivitydate>
+                 <userid>{userid}</userid>
+                 <breakflag>{breakflag}</breakflag>
+                 <idle_time_start>{idle_time_start}</idle_time_start>
+                 <idle_time_end>{idle_time_end}</idle_time_end>
+                 <ComputerName>{computer_name}</ComputerName>
+              </web:lastactivitydate>
+           </soapenv:Body>
+        </soapenv:Envelope>
+        """
+
+        # Endpoint URL
+        url = "https://worktre.com:443/webservices/worktre_soap_2.0/services.php"
+
+        # Send the POST request
+        response = requests.post(url, data=payload, headers=headers, timeout=10)
+        print("====")
+        print("Last activity date called...")
+        print("=====")
+        soap_response = response.text
+
+        # Parse the SOAP response
+        root = ET.fromstring(soap_response)
+
+        # Define namespaces
+        namespaces = {
+            'SOAP-ENV': 'http://schemas.xmlsoap.org/soap/envelope/',
+            'ns1': 'https://worktre.com/',
+            'xsi': 'http://www.w3.org/2001/XMLSchema-instance',
+            'SOAP-ENC': 'http://schemas.xmlsoap.org/soap/encoding/'
+        }
+
+        return_element = root.find('.//ns1:lastactivitydateResponse/return', namespaces)
+
+        if return_element is not None:
+            items = return_element.findall('item', namespaces)
+
+            # Extract the keys (first element)
+            keys = items[0].text.split(",") if items[0].text else []
+            keys = [key.strip() for key in keys]
+
+            # Extract the values (remaining elements)
+            values = [item.text or "" for item in items[1:]]
+
+            result = {}
+            for i in range(len(keys)):
+                key = keys[i]
+                value = values[i]
+                result[key] = value
+
+            try:
+                print(result)
+                resp = {"status": True, "data": result}
+            except Exception as e:
+                resp = {"status": False, "msg": "Error parsing response", "data": {"error": str(e)}}
+        else:
+            resp = {"status": False, "msg": "No response data", "data": {}}
+
+        json_response = json.dumps(resp)
+        return json_response
+
+    def getservice(self, userid):
+        computer_name = socket.gethostname()
+
+        # Headers
+        headers = {
+            "Content-Type": "text/xml; charset=utf-8",
+            "SOAPAction": "https://worktre.com/webservices/worktre_soap_2.0/services.php/getservice",
+        }
+
+        # SOAP request payload
+        payload = f"""<?xml version="1.0" encoding="UTF-8"?>
+        <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                          xmlns:web="https://worktre.com/">
+           <soapenv:Header/>
+           <soapenv:Body>
+              <web:getservice>
+                 <userid>{userid}</userid>
+                 <ComputerName>{computer_name}</ComputerName>
+              </web:getservice>
+           </soapenv:Body>
+        </soapenv:Envelope>
+        """
+
+        # Endpoint URL
+        url = "https://worktre.com:443/webservices/worktre_soap_2.0/services.php"
+
+        # Send the POST request
+        response = requests.post(url, data=payload, headers=headers, timeout=10)
+
+        soap_response = response.text
+
+        # Parse the SOAP response
+        root = ET.fromstring(soap_response)
+
+        # Define namespaces
+        namespaces = {
+            'SOAP-ENV': 'http://schemas.xmlsoap.org/soap/envelope/',
+            'ns1': 'https://worktre.com/',
+            'xsi': 'http://www.w3.org/2001/XMLSchema-instance',
+            'SOAP-ENC': 'http://schemas.xmlsoap.org/soap/encoding/'
+        }
+
+        return_element = root.find('.//ns1:getserviceResponse/return', namespaces)
+
+        if return_element is not None:
+            items = return_element.findall('item', namespaces)
+
+            # Extract the keys (first element)
+            keys = items[0].text.split(",") if items[0].text else []
+            keys = [key.strip() for key in keys]
+
+            # Extract the values (remaining elements)
+            values = [item.text or "" for item in items[1:]]
+
+            result = {}
+            for i in range(len(keys)):
+                key = keys[i]
+                value = values[i]
+                result[key] = value
+
+            try:
+                print(result)
+                resp = {"status": True, "data": result}
+            except Exception as e:
+                resp = {"status": False, "msg": "Error parsing response", "data": {"error": str(e)}}
+        else:
+            resp = {"status": False, "msg": "No response data", "data": {}}
+
+        json_response = json.dumps(resp)
+        return json_response
 
     def breakin(self, userid, breaktype, comments, training_type_id="", trainer_id="", website="", ticket_no="", expected_duration=""):
         computer_name = socket.gethostname()
@@ -661,6 +900,7 @@ class API:
 
             try:
                 print(result)
+                stop_inactivity_timer()
                 resp = {"status": True, "data": result}
             except Exception as e:
                 resp = {"status": False, "msg": "Error parsing response", "data": {"error": str(e)}}
@@ -734,6 +974,7 @@ class API:
 
             try:
                 print(result)
+                self.start_inactivity()
                 resp = {"status": True, "data": result}
             except Exception as e:
                 resp = {"status": False, "msg": "Error parsing response", "data": {"error": str(e)}}
@@ -812,12 +1053,102 @@ class API:
                 "data": {"raw_items": values}
             }
 
+    def crashlogin(self, userid, breaktype, onbreak):
+        computer_name = socket.gethostname()
+        ip = get_dynamic_ip()
+        # Headers
+        headers = {
+            "Content-Type": "text/xml; charset=utf-8",
+            "SOAPAction": "https://worktre.com/webservices/worktre_soap_2.0/services.php/crashlogin",
+        }
+
+        # SOAP request payload
+        payload = f"""<?xml version="1.0" encoding="UTF-8"?>
+        <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                          xmlns:web="https://worktre.com/">
+           <soapenv:Header/>
+           <soapenv:Body>
+              <web:crashlogin>
+                 <userid>{userid}</userid>
+                 <breaktype>{breaktype}</breaktype>
+                 <onbreak>{onbreak}</onbreak>
+                 <ComputerName>{computer_name}</ComputerName>
+                 <wtversion>2.0</wtversion>
+                 <ipaddress>{ip}</ipaddress>
+              </web:crashlogin>
+           </soapenv:Body>
+        </soapenv:Envelope>
+        """
+
+        # Send the POST request
+        response = requests.post(url, data=payload, headers=headers, timeout=10)
+
+        soap_response = response.text
+        print("CrashLogin API Resp:",soap_response)
+
+        # Parse the SOAP response
+        root = ET.fromstring(soap_response)
+
+        # Find the 'return' element
+        namespaces = {
+            'SOAP-ENV': 'http://schemas.xmlsoap.org/soap/envelope/',
+            'ns1': 'https://worktre.com/',
+            'xsi': 'http://www.w3.org/2001/XMLSchema-instance',
+            'SOAP-ENC': 'http://schemas.xmlsoap.org/soap/encoding/'
+        }
+
+        return_element = root.find('.//ns1:crashloginResponse/return', namespaces)
+
+        if return_element is not None:
+            items = return_element.findall('item', namespaces)
+
+            # Get the keys (first element)
+            keys = items[0].text.split(",") if items[0].text else []
+
+            # Strip extra spaces in keys
+            keys = [key.strip() for key in keys]
+            print("KEYS : ", keys)
+            # Get the values (remaining elements)
+            values = [item.text or "" for item in items[1:]]
+            print("Values : ", values)
+            result = {}
+            for i in range(len(keys)):
+                try:
+                    key = keys[i]
+                    value = values[i]
+                    result[key] = value
+                except:
+                    pass
+
+            resp = {"status": True, "data": result}
+            json_response = json.dumps(resp)
+            return json_response
+        else:
+            resp = {"status": True, "data": {}}
+            json_response = json.dumps(resp)
+            return json_response
+
+    def startInterval(self):
+        pass
+
+    def stopInterval(self):
+        pass
 
     def handleForgetPassword(self, email):
         print(f"Forgot Password requested for: {email}")
 
     def resetInactivityTimer(self):
         reset_idle_timer()
+
+    def start_inactivity(self):
+        threading.Thread(
+            target=start_inactivity_timer,
+            args=(self.user_info.get("InactivityBreakTime"), self.maximum_inactivity_logoutTime),
+            # args=(0.5, 1),
+
+            kwargs={"on_warn": on_warning, "on_exit": on_exit},
+            daemon=True
+        ).start()
 
 # ---------------------- Path Helper ----------------------
 
@@ -878,10 +1209,10 @@ def start_app(api, html_file):
         minimized=False
     )
 
-    logging.info("🔄 started")
+    logging.info("started")
 
     # You can change 'edgechromium' to 'tkinter' here if needed
-    webview.start(debug=True, gui='edgechromium', func=set_window_icon)
+    webview.start(debug=False, gui='tkinter', func=set_window_icon)
 
 def inactivity_window(api, html_file):
     global current_window

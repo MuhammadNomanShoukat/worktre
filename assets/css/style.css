@@ -447,6 +447,11 @@
      border-radius: 10px;
      resize: none;
 }
+
+#ip_link{
+    font-size: 12px;
+    margin-bottom: 19px;
+}
  .break-wrapper button {
      width: 40%;
      padding: 0px;
