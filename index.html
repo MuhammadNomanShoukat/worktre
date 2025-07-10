@@ -82,6 +82,55 @@
     align-items: center;
     z-index: 9999;
   }
+#simple-loader {
+  display: none; /* hidden by default */
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+
+  z-index: 9999;
+  pointer-events: all; /* block clicks */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#simple-loader .loader-box {
+  background-color: white;
+  font-size: 20px;
+  font-weight: bold;
+  padding: 20px 40px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.internet-overlay {
+        position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.50);
+    color: white;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+.internet-overlay .overlay-content {
+      background: rgba(0, 0, 0, 0.8);
+    padding: 15px 10px 0px 10px;
+    border-radius: 10px;
+    max-width: 80%;
+}
+
+.d-none {
+  display: none !important;
+}
 
 
 </style>
@@ -91,11 +140,31 @@
         <div id="splash-screen">
             <img src="assets/images/splash.png" alt="Loading..." />
         </div>
+        <div id="simple-loader" style="display:none">
+          <div class="loader-box">Loading...</div>
+        </div>
         <span id="empty_element"></span>
-
+<!--          <div class="position-fixed top-0 end-0 p-3" style="z-index: 1060">-->
+<!--            <div id="connectivityToast" class="toast align-items-center text-white bg-primary border-0" role="alert" aria-live="assertive" aria-atomic="true">-->
+<!--              <div class="d-flex">-->
+<!--                <div class="toast-body" id="toastBody">-->
+<!--                  &lt;!&ndash; message injected here &ndash;&gt;-->
+<!--                </div>-->
+<!--                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>-->
+<!--              </div>-->
+<!--            </div>-->
+<!--          </div>-->
+            <div id="internetOverlay" class="internet-overlay d-none">
+              <div class="overlay-content">
+                <p>⚠️ You are offline. Please check your internet connection.</p>
+              </div>
+            </div>
 
         <!-- Main Login Page -->
         <section id="loginPage">
+            <!-- Optional: a test button -->
+<!--  <button id="testOffline" class="btn btn-sm btn-warning">Simulate Offline</button>-->
+<!--  <button id="testOnline" class="btn btn-sm btn-success">Simulate Online</button>-->
             <div class="row">
                 <div class="col-6">
                     <div class="login-screen-img">
@@ -142,7 +211,7 @@
                                     </div>
 
                                     <div class="mb-3 link">
-                                        <p id="ip_link">&nbsp;</p>
+                                        <p id="login_error">&nbsp;</p>
                                     </div>
                                 </form>
                             </div>
@@ -224,7 +293,7 @@
                                             <p class="shift-time" id="empShift"></p>
                                         </div>
                                         <div class="break-actions">
-                                            <img src="assets/images/play.png" width="10%" alt="timer" id="play"/>
+                                            <img src="assets/images/play.png" width="10%" alt="timer" id="play" data-bs-toggle="modal" data-bs-target="#breakModal"/>
                                             <img src="assets/images/pause.png" width="10%" alt="timer" id="pause" />
                                             <!-- <img src="assets/images/stop.png" width="10%" alt="timer" id="stop" /> -->
                                         </div>
@@ -374,7 +443,7 @@
                                   <div class="form-group">
                                     <textarea id="comment" placeholder="Comment"></textarea>
                                   </div>
-                                  <button type="submit">Submit</button>
+                                  <button type="submit" data-bs-dismiss="modal">Submit</button>
                                 </form>
                               </div>
                             </div>
@@ -445,11 +514,14 @@ document.addEventListener("DOMContentLoaded", async () => {
     let breakTimerInterval = null;
     let breakStartTime = null;
     let breakEndTime = null;
+    let breakMarked = false;
+    let breakType = "";
+    let breakComment = "";
 
     let currentHourPassed = 0;
     let currentMinutePassed = 0;
     let breakMinutesPassed = 0;
-    let totalBreakMinutes = 0;
+    let totalBreakMinutes = 60;
 
     let shiftTicks = [];
     let breakTicks = [];
@@ -459,22 +531,27 @@ document.addEventListener("DOMContentLoaded", async () => {
     const toggleIcon = togglePassword.querySelector("i");
     const emailInput = document.getElementById("email");
     const rememberMe = document.getElementById("remember_me");
+<!--    const toastEl = document.getElementById('connectivityToast');-->
+<!--    const toastBody = document.querySelector('#connectivityToast .toast-body');-->
+<!--    const connectivityToast = new bootstrap.Toast(toastEl);-->
+    const internetOverlay = document.getElementById('internetOverlay');
+    const loginErrorNotify = document.getElementById("login_error")
 
     function createShiftTicks(totalShiftMinutes) {
-        const timer = document.getElementById("shiftTimer");
-        shiftTicks = [];
-        timer.querySelectorAll(".tick").forEach(el => el.remove());
+      const timer = document.getElementById("shiftTimer");
+      shiftTicks = [];
+      timer.querySelectorAll(".tick").forEach(el => el.remove());
 
-        const totalHours = Math.ceil(totalShiftMinutes / 60);
-        const degreePerHour = 360 / totalHours;
+      const totalHours = Math.ceil(totalShiftMinutes / 60);
+      const degreePerHour = 360 / totalHours;
 
-        for (let i = 0; i < totalHours; i++) {
-            const tick = document.createElement("div");
-            tick.classList.add("tick");
-            tick.style.transform = `rotate(${i * degreePerHour}deg)`;
-            timer.appendChild(tick);
-            shiftTicks.push(tick);
-        }
+      for (let i = 0; i < totalHours; i++) {
+        const tick = document.createElement("div");
+        tick.classList.add("tick");
+        tick.style.transform = `rotate(${i * degreePerHour}deg)`;
+        timer.appendChild(tick);
+        shiftTicks.push(tick);
+      }
     }
 
     function createBreakTicks() {
@@ -502,54 +579,68 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     function startShiftTimer(totalShiftMinutes, resumeHour = 0, resumeMinute = 0) {
-        const shiftTimer = document.getElementById("shiftTimer");
-        const fillRing = document.getElementById("fillRing");
-        const hourLabel = document.getElementById("hourLabel");
+      const shiftTimer = document.getElementById("shiftTimer");
+      const fillRing = document.getElementById("fillRing");
+      const hourLabel = document.getElementById("hourLabel");
 
-        currentHourPassed = resumeHour;
-        currentMinutePassed = resumeMinute;
+      currentHourPassed = resumeHour;
+      currentMinutePassed = resumeMinute;
 
-        shiftTimer.style.display = "block";
-        document.getElementById("breakTimer").style.display = "none";
+      shiftTimer.style.display = "block";
+      document.getElementById("breakTimer").style.display = "none";
 
-        if (!shiftTicks.length) createShiftTicks(totalShiftMinutes);
+      if (!shiftTicks.length) createShiftTicks(totalShiftMinutes);
 
-        const elapsed = currentHourPassed * 60 + currentMinutePassed;
-        const remaining = totalShiftMinutes - elapsed;
-        const hrs = Math.floor(remaining / 60);
-        const mins = remaining % 60;
-        hourLabel.innerText = `${hrs}:${mins.toString().padStart(2, '0')}`;
+      let elapsed = currentHourPassed * 60 + currentMinutePassed;
+      let remaining = totalShiftMinutes - elapsed;
+
+      // Mark previously completed ticks
+      for (let i = 0; i < Math.floor(elapsed / 60); i++) {
+        if (shiftTicks[i]) shiftTicks[i].classList.add("active");
+      }
+
+      // Initial ring update
+      const angle = (elapsed / totalShiftMinutes) * 360;
+      fillRing.style.background = `conic-gradient(#0aebc1 ${angle}deg, white ${angle}deg)`;
+
+      // Update label
+      let hrs = Math.floor(remaining / 60);
+      let mins = remaining % 60;
+      hourLabel.innerText = `${hrs}:${mins.toString().padStart(2, '0')}`;
+
+      // Start interval
+      shiftTimerInterval = setInterval(() => {
+        elapsed = currentHourPassed * 60 + currentMinutePassed;
+        remaining = totalShiftMinutes - elapsed;
 
         const angle = (elapsed / totalShiftMinutes) * 360;
         fillRing.style.background = `conic-gradient(#0aebc1 ${angle}deg, white ${angle}deg)`;
 
-        shiftTimerInterval = setInterval(() => {
-            const elapsed = currentHourPassed * 60 + currentMinutePassed;
-            const remaining = totalShiftMinutes - elapsed;
+        const completedHour = Math.floor(elapsed / 60);
+        if (completedHour < shiftTicks.length) {
+          shiftTicks[completedHour].classList.add("active");
+        }
 
-            const angle = (elapsed / totalShiftMinutes) * 360;
-            fillRing.style.background = `conic-gradient(#0aebc1 ${angle}deg, white ${angle}deg)`;
+        hrs = Math.floor(remaining / 60);
+        mins = remaining % 60;
+        hourLabel.innerText = `${hrs}:${mins.toString().padStart(2, '0')}`;
 
-            const completedHour = Math.floor(elapsed / 60);
-            if (completedHour < shiftTicks.length) {
-                shiftTicks[completedHour].classList.add("active");
-            }
+        currentMinutePassed++;
+        if (currentMinutePassed >= 60) {
+          currentMinutePassed = 0;
+          currentHourPassed++;
+        }
 
-            const hrs = Math.floor(remaining / 60);
-            const mins = remaining % 60;
-            hourLabel.innerText = `${hrs}:${mins.toString().padStart(2, '0')}`;
+        if (elapsed >= totalShiftMinutes) {
+          clearInterval(shiftTimerInterval);
+          hourLabel.innerText = `0:00`;
+        }
+      }, 60000); // Update every minute
+    }
 
-            currentMinutePassed++;
-            if (currentMinutePassed >= 60) {
-                currentMinutePassed = 0;
-                currentHourPassed++;
-            }
-
-            if (elapsed >= totalShiftMinutes) {
-                clearInterval(shiftTimerInterval);
-                hourLabel.innerText = `0:00`;
-            }
-        }, 60000);
+    function parsePassedTime(passedStr) {
+      const [hours, minutes] = passedStr.split(":").map(Number);
+      return { hours, minutes };
     }
 
 
@@ -603,27 +694,29 @@ document.addEventListener("DOMContentLoaded", async () => {
                 breakMinutesPassed++;
                 timeLabel.innerText = totalBreakMinutes - breakMinutesPassed;
             } else {
+                resetMarkedBreak()
                 clearInterval(breakTimerInterval);
                 breakTimerInterval = null;
 
-                const breakEndTime = new Date();
-                const breakEndElem = document.getElementById("break_endtime");
-                if (breakEndElem) {
-                    breakEndElem.innerText = " - " + formatTime(breakEndTime);
-                }
+<!--                const breakEndTime = new Date();-->
+<!--                const breakEndElem = document.getElementById("break_endtime");-->
+<!--                if (breakEndElem) {-->
+<!--                    breakEndElem.innerText = " - " + formatTime(breakEndTime);-->
+<!--                }-->
 
-                document.getElementById("shiftTimer").style.display = "block";
-                breakTimer.style.display = "none";
-                resumeShiftTimer()
-
-
+<!--                document.getElementById("shiftTimer").style.display = "block";-->
+<!--                breakTimer.style.display = "none";-->
+<!--                resumeShiftTimer()-->
 
 
-                document.getElementById("play").style.pointerEvents = "auto";
-                document.getElementById("play").style.opacity = "1";
-                document.getElementById("breakCircle").classList.remove("active");
 
-                await window.pywebview.api.start_inactivity();
+
+<!--                document.getElementById("play").style.pointerEvents = "auto";-->
+<!--                document.getElementById("play").style.opacity = "1";-->
+<!--                document.getElementById("breakCircle").classList.remove("active");-->
+
+<!--                await window.pywebview.api.start_inactivity();-->
+                redirectLogin()
             }
         }, 60000);
     }
@@ -722,8 +815,70 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     displaySplashScreen();
 
+    function showLoader() {
+      const loader = document.getElementById("simple-loader");
+      if (loader) {
+<!--        loader.style.display = "block";-->
+        loader.style.display = "flex";
+      }
+    }
+
+    function hideLoader() {
+      const loader = document.getElementById("simple-loader");
+      if (loader) {
+        loader.style.display = "none";
+      }
+    }
+
+    function redirectLogin(){
+        window.pywebview.api.clear_app_data();
+        stopShiftTimer();
+        pauseBreakTimer();
+
+
+        document.getElementById("dashboard").style.display = "none";
+        document.getElementById("loginPage").style.display = "block";
+
+        document.getElementById("play").style.pointerEvents = "auto";
+        document.getElementById("play").style.opacity = "1";
+        localStorage.clear();
+    }
+
+    function convertTimeRangeFromGMT(timeRangeStr) {
+      const [startStr, endStr] = timeRangeStr.split(' - ');
+
+      const today = new Date().toISOString().split('T')[0]; // e.g., "2025-07-05"
+
+      const parseGMTTime = (timeStr) => {
+        const date = new Date(`${today}T${convertTo24Hour(timeStr)}:00Z`); // Treat as UTC
+        return date.toLocaleTimeString([], {
+          hour: 'numeric',     // <-- use 'numeric' instead of '2-digit'
+          minute: '2-digit',
+          hour12: true,
+        });
+      };
+
+      const convertTo24Hour = (time12h) => {
+        const [time, modifier] = time12h.split(' ');
+        let [hours, minutes] = time.split(':');
+        if (modifier.toLowerCase() === 'pm' && hours !== '12') {
+          hours = String(parseInt(hours, 10) + 12);
+        }
+        if (modifier.toLowerCase() === 'am' && hours === '12') {
+          hours = '00';
+        }
+        return `${hours.padStart(2, '0')}:${minutes}`;
+      };
+
+      const localStart = parseGMTTime(startStr);
+      const localEnd = parseGMTTime(endStr);
+
+      return `${localStart} - ${localEnd}`;
+    }
+
     document.querySelector("button[type='submit']").addEventListener("click", async (e) => {
          e.preventDefault();
+         showLoader()
         const email = emailInput.value.trim();
         const password = passwordInput.value.trim();
         const rememberMe = document.getElementById("remember_me").checked;
@@ -758,11 +913,18 @@ document.addEventListener("DOMContentLoaded", async () => {
         try {
             const response = await window.pywebview.api.login(email, password);
             const { status, data } = JSON.parse(response);
-
+            console.log(data)
             if (status && Object.keys(data).length>0) {
+
+                localStorage.setItem("user_data", JSON.stringify(data));
+
+
+
+
+
                 const empName = `${data.EmpFirstName} ${data.EmpLastName}`;
-                const empShift = `${formatTimeForDisplay(data.ShiftStartTime)} - ${formatTimeForDisplay(data.ShiftEndTime)}`;
-                totalBreakMinutes = data.InactivityBreakTime
+                const empShift = convertTimeRangeFromGMT(`${formatTimeForDisplay(data.ShiftStartTime)} - ${formatTimeForDisplay(data.ShiftEndTime)}`);
+
 
                 const { hours: startHrs, minutes: startMins } = parseTime(data.ShiftStartTime);
                 const { hours: endHrs, minutes: endMins } = parseTime(data.ShiftEndTime);
@@ -775,11 +937,33 @@ document.addEventListener("DOMContentLoaded", async () => {
                     endDate.setDate(endDate.getDate() + 1); // Cross-midnight fix
                 }
 
+
+                const getServiceResponse = await getServiceAPI(data.EID)
+                let passedTime = ""
+
+                if(getServiceResponse){
+                    passedTime = getServiceResponse["8)- totalDuration"] ?? "0:00";
+                    console.log(passedTime)
+                    hideLoader()
+                }
+
+
+
+
+
+
+
+
+
+
+
+
                 const totalShiftMinutes = Math.floor((endDate - startDate) / (1000 * 60));
+                const { hours: resumeHour, minutes: resumeMinute } = parsePassedTime(passedTime);
 
-                localStorage.setItem("user_data", JSON.stringify(data));
 
-                document.getElementById("ip_link").innerHTML = "&nbsp;";
+
+                loginErrorNotify.innerHTML = "&nbsp;";
                 document.getElementById("login_time").innerText = formattedLoginTime;
                 document.getElementById("empName").innerText = empName;
                 document.getElementById("empShift").innerText = empShift;
@@ -793,21 +977,23 @@ document.addEventListener("DOMContentLoaded", async () => {
                 resetAllTimers();
                 createShiftTicks(totalShiftMinutes);
                 createBreakTicks();
-                startShiftTimer(totalShiftMinutes);
+                startShiftTimer(totalShiftMinutes, resumeHour, resumeMinute);
 
-                await getServiceAPI()
+
             } else {
-                console.log(data)
+                hideLoader()
                 if(data.IPAddresNotFound === 'Invalid IP Address'){
                     alert("Your IP address is not registered. ");
-                    document.getElementById("ip_link").innerHTML = "Your Ip is not registered with WORKTRE. Please "+ ' <a href="#">Click Here</a> ' +" to send request for access"
+                    loginErrorNotify.innerHTML = "Your Ip is not registered with WORKTRE. Please "+ ' <a href="#">Click Here</a> ' +" to send request for access"
                 }else{
                     alert("Invalid username or password.");
                 }
             }
         } catch (err) {
+            hideLoader()
             console.error("Login failed:", err);
-            alert("Login error.");
+
+<!--            alert("Login error.");-->
         }
     });
 
@@ -815,6 +1001,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     form.addEventListener('submit', async function (e) {
       e.preventDefault(); // Prevent form from reloading the page
+      showLoader()
 
       const comment = document.getElementById('comment2').value.trim();
 
@@ -825,6 +1012,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       // Call your function to hide the modal
       hideInactivityModal();
+      resumeShiftTimer();
       await callBreakOutAPI(comment)
       window.pywebview.api.resetInactivityTimer()
     });
@@ -841,30 +1029,42 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     document.querySelector("#break form").addEventListener("submit", async (e) => {
         e.preventDefault();
-        hideBreakModal()
+        showLoader()
+<!--        hideBreakModal()-->
         stopShiftTimer();
 
-        const breakType = document.getElementById("break_type").value;
+        const breakType_ = document.getElementById("break_type").value;
         const comment = document.getElementById("comment").value;
+        breakType = breakType_
+        breakMarked = true
+        breakComment = comment
 
         console.log("Break form submitted", { breakType, comment });
 
-        document.getElementById("break").style.display = "none";
+<!--        document.getElementById("break").style.display = "none";-->
         document.getElementById("dashboard_content").style.display = "block";
 
         document.getElementById("play").style.pointerEvents = "none";
         document.getElementById("play").style.opacity = "0.5";
-        document.getElementById("breakCircle").classList.add("active");
+
 
         try{
             const userData = JSON.parse(localStorage.getItem("user_data") || "{}");
             const response = await window.pywebview.api.breakin(
                 userData.EID || "",
-                breakType || "",
+                breakType_ || "",
                 comment || ""
             );
+
+            if(response){
+                hideLoader()
+                document.getElementById('break_type').selectedIndex = 0;
+                document.getElementById("comment").value = "";
+                document.getElementById("breakCircle").classList.add("active");
+            }
             console.log(response)
         }catch(err){
+            hideLoader()
             console.err("Break in API error")
         }
 
@@ -873,7 +1073,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     document.getElementById("pause").addEventListener("click", async () => {
         if (breakTimerInterval) {
+            showLoader()
             pauseBreakTimer();
+<!--            hideBreakModal()-->
             const userData = JSON.parse(localStorage.getItem("user_data") || "{}");
 
             const { hours: startHrs, minutes: startMins } = parseTime(userData.ShiftStartTime);
@@ -891,24 +1093,55 @@ document.addEventListener("DOMContentLoaded", async () => {
             document.getElementById("play").style.opacity = "1";
             document.getElementById("breakCircle").classList.remove("active");
 
-            await callBreakOutAPI()
+
+
+            const response = await callBreakOutAPI()
+            if(response){
+                hideLoader()
+            }
+
+            resetMarkedBreak()
         }
     });
 
 
-    async function callBreakOutAPI(breakType){
+    async function callBreakOutAPI(comment=""){
         try{
             const userData = JSON.parse(localStorage.getItem("user_data") || "{}");
-            const comment = document.getElementById("comment").value;
-               console.log(comment)
-            const response = await window.pywebview.api.breakout(
-                userData.EID,
-                breakType,
-                comment
-            );
+            let response = ""
+
+            if(breakMarked){
+                response = await window.pywebview.api.breakout(
+                    userData.EID,
+                    breakType,
+                    breakComment
+                );
+
+
+
+            }else{
+                response = await window.pywebview.api.breakout(
+                    userData.EID,
+                    "inactivity",
+                    comment
+                );
+            }
+
+            if(response){
+                console.log("callBreakOutAPI called...", response)
+                hideLoader()
+            }
+
+
+<!--            const comment = document.getElementById("comment").value;-->
+<!--            console.log(comment)-->
+
+
+
 
             console.log("callBreakOutAPI: ", response)
         }catch(err){
+            hideLoader()
             console.error("Break out API error")
         }
     }
@@ -923,8 +1156,13 @@ document.addEventListener("DOMContentLoaded", async () => {
                 userData.EID,
                 "inactivity"
             );
+            if(response){
+                console.log("callInactivityAPI called...", response)
+                hideLoader()
+            }
             console.log("callInactivityAPI: ", response)
         }catch(err){
+            hideLoader()
             console.error("Inactivity API error")
         }
     }
@@ -937,8 +1175,13 @@ document.addEventListener("DOMContentLoaded", async () => {
             const response = await window.pywebview.api.logoutinactivity(
                 userData.EID
             );
+            if(response){
+                console.log("callLogoutInactivityAPI called...", response)
+                hideLoader()
+            }
             console.log("callLogoutInactivityAPI: ", response)
         }catch(err){
+            hideLoader()
             console.error("callLogoutInactivityAPI API error")
         }
     }
@@ -949,50 +1192,77 @@ document.addEventListener("DOMContentLoaded", async () => {
             const response = await window.pywebview.api.logoutinactivity(
                 userData.EID
             );
+            if(response){
+                console.log("logoutInactivityAPI called...", response)
+                hideLoader()
+            }
             console.log("logoutInactivityAPI: ", response)
         }catch(err){
+            hideLoader()
             console.error("Inactivity API error")
         }
     }
 
-    async function getServiceAPI(){
-        try{
-            const userData = JSON.parse(localStorage.getItem("user_data") || "{}");
-            const response = await window.pywebview.api.getservice(
-                userData.EID
-            );
-            console.log("getServiceAPI: ", JSON.parse(response))
+    async function getServiceAPI(userId) {
+        try {
+<!--            const userData = JSON.parse(localStorage.getItem("user_data") || "{}");-->
+            const response = await window.pywebview.api.getservice(userId);
+            const parsed = JSON.parse(response);
 
-        }catch(err){
-            console.error("getServiceAPI API error")
+<!--            console.log("getServiceAPI: ", parsed);-->
+
+            if (parsed.status === true) {
+                console.log("getServiceAPI called...", response)
+                return parsed.data;
+            } else {
+                console.warn("getServiceAPI returned status false:", parsed.message || parsed);
+                return null;
+            }
+        } catch (err) {
+            hideLoader();
+            console.error("getServiceAPI API error", err);
+            return null;
         }
     }
 
+
+
     async function logoutAPI(){
         try {
+            stopShiftTimer();
+            pauseBreakTimer();
+
+
+
+
             const userData = JSON.parse(localStorage.getItem("user_data") || "{}");
-            await window.pywebview.api.logout(
+            const response = await window.pywebview.api.logout(
                 userData.EID || "",
                 userData.EOD || "",
                 userData.TotalChats || 0,
                 userData.TotalBillableChat || 0
             );
-
-            stopShiftTimer();
-            pauseBreakTimer();
-            localStorage.clear();
+            if(response){
+                console.log("logoutAPI called...", response)
+                hideLoader()
+            }
 
             document.getElementById("dashboard").style.display = "none";
             document.getElementById("loginPage").style.display = "block";
 
             document.getElementById("play").style.pointerEvents = "auto";
             document.getElementById("play").style.opacity = "1";
+            localStorage.clear();
+
         } catch (err) {
+            hideLoader()
             console.warn("Logout API failed, proceeding anyway");
         }
     }
 
     document.getElementById("logout").addEventListener("click", async () => {
+        resetMarkedBreak()
+        showLoader()
         await logoutAPI()
     });
 
@@ -1019,13 +1289,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     document.getElementById("break_logs").addEventListener("click", () => {
         document.getElementById("dashboard_content").style.display = "none";
-        document.getElementById("break").style.display = "none";
+<!--        document.getElementById("break").style.display = "none";-->
         document.getElementById("break_logs_content").style.display = "block";
     });
 
     document.getElementById("main-dashboard-logo").addEventListener("click", () => {
         document.getElementById("break_logs_content").style.display = "none";
-        document.getElementById("break").style.display = "none";
+<!--        document.getElementById("break").style.display = "none";-->
         document.getElementById("dashboard_content").style.display = "block";
     });
 
@@ -1042,6 +1312,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             console.log("Loaded saved user:", saved); // Debug output
 
             if (saved.email && saved.password) {
+
                 emailInput.value = saved.email;
                 passwordInput.value = saved.password;
                 rememberMe.checked = true;
@@ -1079,6 +1350,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     window.showInactivityWarningModal = async function () {
         showInactivityModal()
+        stopShiftTimer()
         await callInactivityAPI()
         console.log("⚠️ Inactivity triggered from Python");
 
@@ -1086,7 +1358,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     window.inactivityTimeExceed = async function () {
         console.log("⚠️ inactivityTimeExceed");
+        hideInactivityModal()
+
+        await callBreakOutAPI()
         await callLogoutInactivityAPI()
+        redirectLogin()
+
     }
 
 <!--    function showInactivityModal() {-->
@@ -1143,6 +1420,55 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
       }
 
+      function resetMarkedBreak(){
+        breakMarked = false
+        breakType = ""
+        breakComment = ""
+      }
+
+
+
+    function showConnectivityToast(isOnline) {
+<!--      toastEl.classList.remove('bg-success', 'bg-danger');-->
+
+      if (isOnline) {
+<!--        toastEl.classList.add('bg-success');-->
+<!--        toastBody.textContent = '✅ You are back online';-->
+        internetOverlay.classList.add('d-none'); // Hide overlay
+<!--        connectivityToast.show();-->
+<!--        setTimeout(() => connectivityToast.hide(), 3000);-->
+      } else {
+<!--        toastEl.classList.add('bg-danger');-->
+<!--        toastBody.textContent = '❌ You are offline';-->
+        internetOverlay.classList.remove('d-none'); // Show overlay
+<!--        connectivityToast.show(); // Stays until manually closed-->
+      }
+    }
+
+    // Detect real browser connection status
+    window.addEventListener('online', () => showConnectivityToast(true));
+    window.addEventListener('offline', () => showConnectivityToast(false));
+
+    // Initial state check on page load
+    window.addEventListener('DOMContentLoaded', () => {
+      if (!navigator.onLine) {
+        showConnectivityToast(false);
+      }
+    });
+
+    // Optional: simulate events for testing
+<!--    document.getElementById('testOffline').addEventListener('click', () => showConnectivityToast(false));-->
+<!--    document.getElementById('testOnline').addEventListener('click',  () => showConnectivityToast(true));-->
+
+    window.onInternetDisconnectedTimeExceed = function onInternetDisconnectedTimeexceed() {
+<!--        console.log("⚠️ No internet connection logging out. Please check your connection.");-->
+        redirectLogin()
+    }
+
+    window.redirectLogin = function() {
+        console.log("Redirecting due to system event...");
+        redirectLogin()
+    }
 
 });
 </script>
