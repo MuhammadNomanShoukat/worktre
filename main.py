@@ -361,7 +361,6 @@ class API:
                             resp = {"status": False, "data": data}
                             return json.dumps(resp)
 
-
                     if data and isinstance(data, dict):
                         if data.get("LoginStatus") == "AlreadyLogin":
                             self.crashlogin(data.get("EID", ""), "crash", "False")

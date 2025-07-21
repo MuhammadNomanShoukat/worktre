@@ -349,31 +349,7 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <tr>
-                                            <td>8:00 to 6:00 pm</td>
-                                            <td>Trainings</td>
-                                            <td>1 Hour</td>
-                                        </tr>
-                                        <tr>
-                                            <td>8:00 to 6:00 pm</td>
-                                            <td>Meeting</td>
-                                            <td>1 Hour</td>
-                                        </tr>
-                                        <tr>
-                                            <td>8:00 to 6:00 pm</td>
-                                            <td>Lunch Braek</td>
-                                            <td>1 Hour</td>
-                                        </tr>
-                                        <tr>
-                                            <td>8:00 to 6:00 pm</td>
-                                            <td>Tea Break</td>
-                                            <td>1 Hour</td>
-                                        </tr>
-                                        <tr>
-                                            <td>8:00 to 6:00 pm</td>
-                                            <td>Awei Break</td>
-                                            <td>1 Hour</td>
-                                        </tr>
+
                                     </tbody>
                                 </table>
                             </div>
@@ -518,9 +494,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     let currentMinutePassed = 0;
     let breakMinutesPassed = 0;
     let totalBreakMinutes = 60;
+    let currentPage = 1;
+    const logsPerPage = 5;
+
 
     let shiftTicks = [];
     let breakTicks = [];
+    let paginatedLogData = [];
 
     const passwordInput = document.getElementById("password");
     const togglePassword = document.getElementById("togglePassword");
@@ -962,16 +942,20 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 
                 if(getServiceResponse){
-                    passedTime = getServiceResponse["8)- totalDuration"] ?? "0:00";
-                    let breakDetails = getServiceResponse["3)- breakDetails"]
-                    const logData = convertLogToFormattedObjects(getServiceResponse["3)- breakDetails"]);
-                    console.log(logData);
-                    console.log("Break Details:", getServiceResponse["3)- breakDetails"])
-                    console.log(passedTime)
-                    renderLogsToTable(logData, '.logs-tbl tbody');
+                  passedTime = getServiceResponse["8)- totalDuration"] ?? "0:00";
+                  const breakDetails = getServiceResponse["3)- breakDetails"];
+                  const logData = convertLogToFormattedObjects(breakDetails);
 
-                    hideLoader()
+                  // Save globally
+                  paginatedLogData = logData;
+                  currentPage = 1;
+
+                  // First page render
+                  renderLogsToTable(paginatedLogData, '.logs-tbl tbody', currentPage);
+
+                  hideLoader();
                 }
+
 
 
 
@@ -1045,14 +1029,18 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     });
 
-    function renderLogsToTable(data, tableBodySelector) {
+    function renderLogsToTable(data, tableBodySelector, page = 1) {
       const tbody = document.querySelector(tableBodySelector);
       if (!tbody) return;
+
+      const startIndex = (page - 1) * logsPerPage;
+      const endIndex = startIndex + logsPerPage;
+      const currentData = data.slice(startIndex, endIndex);
 
       // Clear existing rows
       tbody.innerHTML = '';
 
-      if (data.length === 0) {
+      if (currentData.length === 0) {
         const row = document.createElement('tr');
         row.innerHTML = `
           <td colspan="3" style="text-align:center; color: #888;">No break logs</td>
@@ -1062,7 +1050,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       }
 
       // Populate rows if data exists
-      data.forEach(item => {
+      currentData.forEach(item => {
         const row = document.createElement('tr');
         row.innerHTML = `
           <td>${item.time}</td>
@@ -1071,7 +1059,59 @@ document.addEventListener("DOMContentLoaded", async () => {
         `;
         tbody.appendChild(row);
       });
+
+      renderPaginationControls(data.length);
     }
+
+    function renderPaginationControls(totalItems) {
+      const totalPages = Math.ceil(totalItems / logsPerPage);
+      const pagination = document.querySelector('.logs-pagination .pagination');
+      if (!pagination) return;
+
+      // Clear old items except previous and next
+      pagination.innerHTML = '';
+
+      // Previous Button
+      const prev = document.createElement('li');
+      prev.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+      prev.innerHTML = `<a class="page-link" href="#">Previous</a>`;
+      prev.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (currentPage > 1) {
+          currentPage--;
+          renderLogsToTable(paginatedLogData, '.logs-tbl tbody', currentPage);
+        }
+      });
+      pagination.appendChild(prev);
+
+      // Page Numbers
+      for (let i = 1; i <= totalPages; i++) {
+        const li = document.createElement('li');
+        li.className = `page-item ${i === currentPage ? 'active' : ''}`;
+        li.innerHTML = `<a class="page-link" href="#">${i}</a>`;
+        li.addEventListener('click', (e) => {
+          e.preventDefault();
+          currentPage = i;
+          renderLogsToTable(paginatedLogData, '.logs-tbl tbody', currentPage);
+        });
+        pagination.appendChild(li);
+      }
+
+      // Next Button
+      const next = document.createElement('li');
+      next.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
+      next.innerHTML = `<a class="page-link" href="#">Next</a>`;
+      next.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (currentPage < totalPages) {
+          currentPage++;
+          renderLogsToTable(paginatedLogData, '.logs-tbl tbody', currentPage);
+        }
+      });
+      pagination.appendChild(next);
+    }
+
+
 
 
 
