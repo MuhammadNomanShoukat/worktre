@@ -201,7 +201,7 @@
                                         </div>
                                         <div>
                                             <label class="form-check-label">
-                                                <a href="#" class="forget-link" id="forget_password">Forget Password?</a>
+                                                <a href="https://worktre.com/reset_password/fpassword" target="_blank" class="forget-link" id="forget_password">Forget Password?</a>
                                             </label>
                                         </div>
                                     </div>
@@ -433,11 +433,7 @@
                                 <form>
                                   <div class="form-group">
                                     <select id="break_type">
-                                      <option value="training">Trainings</option>
-                                      <option value="meeting">Meeting</option>
-                                      <option value="lunch_break">Lunch Break</option>
-                                      <option value="tea_break">Tea Break</option>
-                                      <option value="awei_break">Awei Break</option>
+
                                     </select>
                                   </div>
                                   <div class="form-group">
@@ -693,6 +689,18 @@ document.addEventListener("DOMContentLoaded", async () => {
 
                 breakMinutesPassed++;
                 timeLabel.innerText = totalBreakMinutes - breakMinutesPassed;
+
+                if(totalBreakMinutes === breakMinutesPassed){
+                    setTimeout(()=>{
+                        document.getElementById("breakCircle").classList.remove("active");
+                        resetMarkedBreak()
+                        clearInterval(breakTimerInterval);
+                        breakTimerInterval = null;
+                        redirectLogin()
+                    }, 1500)
+
+                }
+
             } else {
                 resetMarkedBreak()
                 clearInterval(breakTimerInterval);
@@ -878,6 +886,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     document.querySelector("button[type='submit']").addEventListener("click", async (e) => {
          e.preventDefault();
+
+
+
+
+
+
          showLoader()
         const email = emailInput.value.trim();
         const password = passwordInput.value.trim();
@@ -886,14 +900,17 @@ document.addEventListener("DOMContentLoaded", async () => {
         // Validation
         if (!email && !password) {
             alert("Please enter username and password.");
+            hideLoader()
             return;
         }
         if (!email) {
             alert("Username cannot be empty.");
+            hideLoader()
             return;
         }
         if (!password) {
             alert("Password cannot be empty.");
+            hideLoader()
             return;
         }
 
@@ -921,6 +938,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 
 
+                totalBreakMinutes = parseInt(data.OtherBreakLogoutTime)
 
                 const empName = `${data.EmpFirstName} ${data.EmpLastName}`;
                 const empShift = convertTimeRangeFromGMT(`${formatTimeForDisplay(data.ShiftStartTime)} - ${formatTimeForDisplay(data.ShiftEndTime)}`);
@@ -941,9 +959,17 @@ document.addEventListener("DOMContentLoaded", async () => {
                 const getServiceResponse = await getServiceAPI(data.EID)
                 let passedTime = ""
 
+
+
                 if(getServiceResponse){
                     passedTime = getServiceResponse["8)- totalDuration"] ?? "0:00";
+                    let breakDetails = getServiceResponse["3)- breakDetails"]
+                    const logData = convertLogToFormattedObjects(getServiceResponse["3)- breakDetails"]);
+                    console.log(logData);
+                    console.log("Break Details:", getServiceResponse["3)- breakDetails"])
                     console.log(passedTime)
+                    renderLogsToTable(logData, '.logs-tbl tbody');
+
                     hideLoader()
                 }
 
@@ -981,13 +1007,35 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 
             } else {
-                hideLoader()
                 if(data.IPAddresNotFound === 'Invalid IP Address'){
-                    alert("Your IP address is not registered. ");
-                    loginErrorNotify.innerHTML = "Your Ip is not registered with WORKTRE. Please "+ ' <a href="#">Click Here</a> ' +" to send request for access"
+                     alert("Your IP address is not registered.");
+                    loginErrorNotify.innerHTML = `Your IP is not registered with WORKTRE. Please <a href="#" id="ip_request">Click Here</a> to send a request for access.`;
+
+                    setTimeout(() => {
+                        const ipLink = document.getElementById('ip_request');
+
+                        if (!ipLink) {
+                            console.error("Could not find the IP request link element.");
+                            return;
+                        }
+
+                        ipLink.addEventListener('click', async function (e) {
+                            e.preventDefault();
+                            await requestForAccessAPI(data.EID)
+                        });
+
+                    }, 0);
+
+                    hideLoader();
+
+
+                }else if(data.SystemChangeStatus === "1"){
+                    alert("You are already logged in on another device with these credentials.");
+                    loginErrorNotify.innerHTML = "You are already login to another system, please logout there to login here"
                 }else{
                     alert("Invalid username or password.");
                 }
+                hideLoader()
             }
         } catch (err) {
             hideLoader()
@@ -996,6 +1044,78 @@ document.addEventListener("DOMContentLoaded", async () => {
 <!--            alert("Login error.");-->
         }
     });
+
+    function renderLogsToTable(data, tableBodySelector) {
+      const tbody = document.querySelector(tableBodySelector);
+      if (!tbody) return;
+
+      // Clear existing rows
+      tbody.innerHTML = '';
+
+      if (data.length === 0) {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td colspan="3" style="text-align:center; color: #888;">No break logs</td>
+        `;
+        tbody.appendChild(row);
+        return;
+      }
+
+      // Populate rows if data exists
+      data.forEach(item => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${item.time}</td>
+          <td>${item.type}</td>
+          <td>${item.duration}</td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+
+
+
+
+    function convertLogToFormattedObjects(input) {
+      return input
+        .split(/\[\d+\] => /)
+        .slice(1)
+        .map(line => {
+          const regex = /(\d{2}):(\d{2}) (am|pm)\* to \*(\d{2}):(\d{2}) (am|pm)\* \(([^)]+)\) -- (\d{2}) Minute\(s\)/;
+          const match = line.match(regex);
+          if (!match) return null;
+
+          const [, sh, sm, sp, eh, em, ep, type, duration] = match;
+
+          const toDate = (h, m, period) => {
+            let hour = parseInt(h);
+            if (period.toLowerCase() === 'pm' && hour !== 12) hour += 12;
+            if (period.toLowerCase() === 'am' && hour === 12) hour = 0;
+            const now = new Date();
+            return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), hour, parseInt(m)));
+          };
+
+          const formatTime = date =>
+            date.toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: true,
+            });
+
+          const start = formatTime(toDate(sh, sm, sp));
+          const end = formatTime(toDate(eh, em, ep));
+
+          return {
+            time: `${start} to ${end}`,
+            type,
+            duration: `${duration} Minute(s)`
+          };
+        })
+        .filter(Boolean);
+    }
+
+
+
 
     const form = document.querySelector('#inactivityModal form');
 
@@ -1020,8 +1140,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 
 
-    document.getElementById("play").addEventListener("click", () => {
+    document.getElementById("play").addEventListener("click", async () => {
     showBreakModal();
+
 <!--        if (breakTimerInterval) return;-->
 <!--        document.getElementById("dashboard_content").style.display = "none";-->
 <!--        document.getElementById("break").style.display = "block";-->
@@ -1061,6 +1182,8 @@ document.addEventListener("DOMContentLoaded", async () => {
                 document.getElementById('break_type').selectedIndex = 0;
                 document.getElementById("comment").value = "";
                 document.getElementById("breakCircle").classList.add("active");
+                console.log(totalBreakMinutes)
+                startBreakTimer();
             }
             console.log(response)
         }catch(err){
@@ -1068,7 +1191,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             console.err("Break in API error")
         }
 
-        startBreakTimer();
+
     });
 
     document.getElementById("pause").addEventListener("click", async () => {
@@ -1105,7 +1228,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
 
-    async function callBreakOutAPI(comment=""){
+    async function callBreakOutAPI(comment="", inactivity=false){
         try{
             const userData = JSON.parse(localStorage.getItem("user_data") || "{}");
             let response = ""
@@ -1123,7 +1246,8 @@ document.addEventListener("DOMContentLoaded", async () => {
                 response = await window.pywebview.api.breakout(
                     userData.EID,
                     "inactivity",
-                    comment
+                    comment,
+                    inactivity
                 );
             }
 
@@ -1260,7 +1384,41 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     }
 
+    async function requestForAccessAPI(uid){
+        showLoader();
+
+        try {
+            if (!window.pywebview || !window.pywebview.api || typeof window.pywebview.api.requestforaccess !== 'function') {
+                throw new Error("PyWebView API is not available.");
+            }
+
+            const response = await window.pywebview.api.requestforaccess(uid);
+
+            if (!response) {
+                throw new Error("No response from backend.");
+            }
+
+            const resData = JSON.parse(response);
+
+            if (resData.status) {
+                alert(`Your request for login with ${resData.data.ip} IP has been sent successfully. You will get a confirmation email once your request is approved.`);
+            } else {
+                alert(`Request failed: ${resData.message || "Unknown error."}`);
+            }
+
+            console.log("Python response:", resData);
+        } catch (err) {
+            console.error("IP request error:", err);
+            alert("An error occurred while sending the IP request. Please try again.");
+        } finally {
+            hideLoader();
+        }
+    }
+
     document.getElementById("logout").addEventListener("click", async () => {
+<!--        document.getElementById("play").style.pointerEvents = "auto";-->
+<!--        document.getElementById("play").style.opacity = "1";-->
+        document.getElementById("breakCircle").classList.remove("active");
         resetMarkedBreak()
         showLoader()
         await logoutAPI()
@@ -1322,6 +1480,24 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     }
 
+    async function getBreakTypes(){
+        try{
+            const userData = JSON.parse(localStorage.getItem("user_data") || "{}");
+            const response = await window.pywebview.api.getBreakTypes(
+                userData.EID
+            );
+            if(response){
+                console.log("getBreakTypes called...", response)
+                populateBreakTypes(response)
+                hideLoader()
+            }
+
+        }catch(err){
+            hideLoader()
+            console.error("Inactivity API error")
+        }
+    }
+
 
 
     async function versionCheck(){
@@ -1329,7 +1505,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             const version_info = await window.pywebview.api.version_check();
             console.log("version_info:", version_info); // Debug output
             if(version_info.status){
-                document.getElementById("app_version").innerText = "version: " + version_info.data.version;
+<!--                document.getElementById("app_version").innerText = "version: " + version_info.data.version;-->
             }
 
         } catch (err) {
@@ -1344,6 +1520,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         el.click();
         loadRememberMeData()
         versionCheck()
+        await getAppVersion()
+        await getBreakTypes();
       }
     }, 1000);
 
@@ -1359,10 +1537,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     window.inactivityTimeExceed = async function () {
         console.log("⚠️ inactivityTimeExceed");
         hideInactivityModal()
-
-        await callBreakOutAPI()
-        await callLogoutInactivityAPI()
         redirectLogin()
+        await callBreakOutAPI("", true)
+        await callLogoutInactivityAPI()
+
 
     }
 
@@ -1426,6 +1604,15 @@ document.addEventListener("DOMContentLoaded", async () => {
         breakComment = ""
       }
 
+     async function getAppVersion(){
+        const version = await window.pywebview.api.get_version();
+
+        console.log(version)
+        document.getElementById("app_version").textContent = `Version: ${version}`;
+     }
+
+
+
 
 
     function showConnectivityToast(isOnline) {
@@ -1468,6 +1655,31 @@ document.addEventListener("DOMContentLoaded", async () => {
     window.redirectLogin = function() {
         console.log("Redirecting due to system event...");
         redirectLogin()
+    }
+
+    async function checkForUpdates() {
+        const result = await window.pywebview.api.manual_check_update();
+        document.getElementById("update-result").textContent = result;
+    }
+
+    function populateBreakTypes(dataArray) {
+      const select = document.getElementById("break_type");
+
+
+      select.innerHTML = '';
+
+
+      dataArray.forEach(item => {
+        const option = document.createElement('option');
+        option.value = item.break_type;
+        option.textContent = capitalizeWords(item.break_type.replace(/[_/]/g, ' '));
+        select.appendChild(option);
+      });
+    }
+
+
+    function capitalizeWords(str) {
+      return str.replace(/\b\w/g, char => char.toUpperCase());
     }
 
 });

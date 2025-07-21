@@ -16,6 +16,7 @@ import base64
 import time
 import threading
 import shutil
+from updater import check_for_update, download_and_install, get_current_version
 import urllib.request
 import xml.etree.ElementTree as ET
 from cryptography.fernet import Fernet
@@ -70,6 +71,14 @@ def cleanup_temp_dir():
 cleanup_temp_dir()
 
 
+def run_update_if_needed():
+    update_info = check_for_update()
+    if update_info:
+        threading.Thread(
+            target=download_and_install,
+            args=(update_info["download_url"], update_info["version"]),
+            daemon=True
+        ).start()
 
 def get_dynamic_ip():
     try:
@@ -342,13 +351,22 @@ class API:
                     status = parsed["status"]
 
 
+                    print("*************************************")
+                    print(data)
+                    print("*************************************")
+                    print("******", data.get("SystemCheckStatus"))
 
-
+                    if data and isinstance(data, dict):
+                        if data.get("SystemChangeStatus") == "1":
+                            resp = {"status": False, "data": data}
+                            return json.dumps(resp)
 
 
                     if data and isinstance(data, dict):
                         if data.get("LoginStatus") == "AlreadyLogin":
                             self.crashlogin(data.get("EID", ""), "crash", "False")
+
+
 
 
 
@@ -1018,7 +1036,7 @@ class API:
         json_response = json.dumps(resp)
         return json_response
 
-    def breakout(self, userid, breaktype, comments=""):
+    def breakout(self, userid, breaktype, comments="", inactivity=False):
         if not self.is_user_logged_in():
             return
 
@@ -1068,7 +1086,10 @@ class API:
         # Check for breakoutResponse
         return_element = root.find('.//ns1:breakoutResponse', namespaces)
 
-        self.start_inactivity()
+        print("Inactivity status:", inactivity)
+        if not inactivity:
+            self.start_inactivity()
+
         if return_element is not None:
             result = {
                 "message": "Breakout successfully processed"
@@ -1155,6 +1176,163 @@ class API:
                 "data": {"raw_items": values}
             }
 
+    def getBreakTypes(self, userid):
+
+        # Headers for the SOAP request
+        headers = {
+            "Content-Type": "text/xml; charset=utf-8",
+            "SOAPAction": "https://worktre.com/webservices/worktre_soap_2.0/services.php/getBreakTypes",
+        }
+
+        # SOAP request payload
+        payload = f"""<?xml version="1.0" encoding="UTF-8"?>
+        <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                          xmlns:web="https://worktre.com/">
+           <soapenv:Header/>
+           <soapenv:Body>
+              <web:getBreakTypes>
+                 <id>{userid}</id>
+              </web:getBreakTypes>
+           </soapenv:Body>
+        </soapenv:Envelope>
+        """
+
+        # Endpoint URL
+        url = "https://worktre.com:443/webservices/worktre_soap_2.0/services.php"
+
+        # Send the POST request
+        response = requests.post(url, data=payload, headers=headers, timeout=10)
+
+        soap_response = response.text
+
+        # Parse the SOAP response
+        root = ET.fromstring(soap_response)
+
+        # Define namespaces
+        namespaces = {
+            'SOAP-ENV': 'http://schemas.xmlsoap.org/soap/envelope/',
+            'ns1': 'https://worktre.com/',
+            'xsi': 'http://www.w3.org/2001/XMLSchema-instance',
+            'SOAP-ENC': 'http://schemas.xmlsoap.org/soap/encoding/'
+        }
+
+        # Find the response element
+        return_element = root.find('.//ns1:getBreakTypesResponse/return', namespaces)
+
+        if return_element is not None:
+            # Extract the Break Types
+            break_types = return_element.findall('item', namespaces)
+
+            # Assuming each item is a string value (adjust parsing as needed)
+            break_types_list = [item.text or "" for item in break_types]
+
+            result = {
+                "break_types": break_types_list
+            }
+
+            try:
+                print(result)
+                resp = {"status": True, "data": result}
+            except Exception as e:
+                resp = {"status": False, "msg": "Error parsing response", "data": {"error": str(e)}}
+        else:
+            resp = {"status": False, "msg": "No response data", "data": {}}
+
+        json_response = json.dumps(resp)
+        breaks = json.loads(json_response)
+        formated_breaks = self.get_formated_break_types(breaks)
+        return formated_breaks
+
+    def requestforaccess(self, userid):
+        # Get the computer name and IP address
+        computer_name = socket.gethostname()
+        ip = get_dynamic_ip()  # Assuming get_dynamic_ip() is a predefined method to get the IP address
+
+        # Headers for the SOAP request
+        headers = {
+            "Content-Type": "text/xml; charset=utf-8",
+            "SOAPAction": "https://worktre.com/webservices/worktre_soap_2.0/services.php/requestforaccess",
+        }
+
+        # SOAP request payload
+        payload = f"""<?xml version="1.0" encoding="UTF-8"?>
+        <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                          xmlns:web="https://worktre.com/">
+           <soapenv:Header/>
+           <soapenv:Body>
+              <web:requestforaccess>
+                 <userid>{userid}</userid>
+                 <ipaddress>{ip}</ipaddress>
+              </web:requestforaccess>
+           </soapenv:Body>
+        </soapenv:Envelope>
+        """
+
+        # Send the POST request to the API
+        url = "https://worktre.com:443/webservices/worktre_soap_2.0/services.php"
+        response = requests.post(url, data=payload, headers=headers, timeout=10)
+
+        # Print and parse the SOAP response
+        soap_response = response.text
+        print("RequestForAccess API Resp:", soap_response)
+
+        # Parse the SOAP response XML
+        root = ET.fromstring(soap_response)
+
+        # Define the namespaces for XML parsing
+        namespaces = {
+            'SOAP-ENV': 'http://schemas.xmlsoap.org/soap/envelope/',
+            'ns1': 'https://worktre.com/',
+            'xsi': 'http://www.w3.org/2001/XMLSchema-instance',
+            'SOAP-ENC': 'http://schemas.xmlsoap.org/soap/encoding/'
+        }
+
+        # Extract the 'return' element from the response
+        return_element = root.find('.//ns1:requestforaccessResponse/return', namespaces)
+        print("RETURN ELEMENT : ", return_element)
+        if return_element is not None:
+            items = return_element.findall('item', namespaces)
+
+            # Get the keys (first element)
+            keys = items[0].text.split(",") if items[0].text else []
+
+            # Strip extra spaces in keys
+            keys = [key.strip() for key in keys]
+
+            # Get the values (remaining elements)
+            values = [item.text or "" for item in items[1:]]
+
+            # Create a dictionary to hold the result
+            result = {}
+            for i in range(len(keys)):
+                key = keys[i]
+                value = values[i]
+                result[key] = value
+
+            # Return a structured JSON response
+            resp = {"status": True, "data": result}
+            json_response = json.dumps(resp)
+            return json_response
+        else:
+            # Return an empty response if no 'return' element is found
+            resp = {"status": True, "data": {"ip": f"{ip}"}}
+            json_response = json.dumps(resp)
+            return json_response
+
+
+    def get_formated_break_types(self, breaks):
+        break_types = breaks["data"]["break_types"][1:]
+
+        formatted_data = []
+
+        for i in range(0, len(break_types), 3):  # Iterate in steps of 3
+            formatted_data.append({
+                "id": break_types[i],
+                "break_type": break_types[i + 1],
+                "status": break_types[i + 2]
+            })
+        return formatted_data
+
     def startInterval(self):
         pass
 
@@ -1167,6 +1345,9 @@ class API:
     def resetInactivityTimer(self):
         reset_idle_timer()
 
+    def get_version(self):
+        return get_current_version()
+
     def start_inactivity(self):
         if not self.is_user_logged_in():
             return
@@ -1174,7 +1355,7 @@ class API:
         threading.Thread(
             target=start_inactivity_timer,
             args=(int(self.user_info.get("InactivityBreakTime")), int(self.user_info.get("InactivityBreakLogoutTime"))),
-            # args=(0.1, 1),
+            # args=(0.3, 1),
             kwargs={"on_warn": on_warning, "on_exit": on_exit},
             daemon=True
         ).start()
@@ -1240,14 +1421,15 @@ def start_app(api, html_file):
         width=1092,
         height=700,
         js_api=api,
-        minimized=False
+        resizable=False,
+        confirm_close=True
     )
 
     logging.info("started")
 
 
 
-    webview.start(debug=False, gui='edgechromium', func=set_window_icon)
+    webview.start(debug=True, gui='edgechromium', func=set_window_icon)
 
 
 def inactivity_window(api, html_file):
@@ -1279,4 +1461,5 @@ def inactivity_window(api, html_file):
 # ---------------------- Entry Point ----------------------
 if __name__ == '__main__':
     # from api import API  # Assuming API is defined in api.py or above
+    run_update_if_needed()
     start_app(API(), 'index.html')

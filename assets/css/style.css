@@ -347,6 +347,12 @@ html, body {
     border-radius: 20px;
     padding: 15px 15px 16px 15px;
 }
+
+.break-log-wrapper .content-log{
+    max-height: 268px;
+    min-height: 268px;
+    overflow-y: auto;
+}
  .break-log-wrapper .content-log table, td, th {
      text-align: left;
 }
@@ -464,7 +470,7 @@ html, body {
      resize: none;
 }
 
-#login_error{
+#login_error, #ip_not_register{
     font-size: 12px;
     margin-bottom: 19px;
 }
