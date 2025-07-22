@@ -174,6 +174,7 @@ html, body {
 }
 /* dashboard styling below */
  #dashboard{
+    position: relative;
     /*background-color: red;
     */
 }
@@ -386,6 +387,34 @@ html, body {
      justify-content: center;
      margin-bottom: 0;
 }
+
+#notifications_content .wrapper,
+#settings_content .wrapper,
+#profile_content .wrapper{
+	height: 71.7vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#dashboard .back-btn{
+    padding: 3px 4px;
+    background: #efefef;
+    border-radius: 50%;
+    color: #fff;
+    position: absolute;
+    top: 150px;
+    left: 16px;
+    cursor: pointer;
+    border: 1px solid #cacaca;
+}
+
+#notifications_content .wrapper .heading,
+#settings_content .wrapper .heading,
+#profile_content .wrapper .heading{
+	font-weight: bold;
+	font-size: 30px;
+}
  .break-log-wrapper .logs-pagination .pagination li a.page-link{
      font-size: 13px !important;
 }
@@ -408,7 +437,11 @@ html, body {
      font-size: 13px !important;
 }
  .break-log-wrapper .logs-pagination .pagination li:not(first-child) a.page-link:hover, .break-log-wrapper .logs-pagination .pagination li:not(last-child) a.page-link:hover{
-     background-color: #f9f9f9;
+     background-color: #eae9e9;
+}
+
+.break-log-wrapper .logs-pagination .pagination pare-item.active{
+    background-color: #eae9e9;
 }
  .break-log-wrapper .logs-pagination .pagination li a.page-link.active{
      background-color: #f9f9f9;

@@ -387,6 +387,40 @@
                 </div>
             </main>
 
+            <main id="notifications_content" style="display: none;">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="wrapper">
+                            <h1 class="heading">Coming Soon!</h1>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+             <main id="settings_content" style="display: none;">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="wrapper">
+                            <h1 class="heading">Coming Soon!</h1>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+             <main id="profile_content" style="display: none;">
+                <div class="row">
+                    <div class="col-12">
+                        <div class="wrapper">
+                            <h1 class="heading">Coming Soon!</h1>
+                        </div>
+                    </div>
+                </div>
+            </main>
+            <span class="back-btn" id="back_button" style="display:none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M15 18L9 12L15 6" stroke="black" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+</span>
+
 
 
 
@@ -981,6 +1015,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 document.getElementById("loginPage").style.display = "none";
                 document.getElementById("dashboard").style.display = "block";
                 document.getElementById("loginCircle").classList.add("active");
+                document.getElementById("back_button").style.display = "none";
 
 
 
@@ -1413,6 +1448,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
             document.getElementById("dashboard").style.display = "none";
             document.getElementById("loginPage").style.display = "block";
+            document.getElementById("back_button").style.display = "none";
 
             document.getElementById("play").style.pointerEvents = "auto";
             document.getElementById("play").style.opacity = "1";
@@ -1456,8 +1492,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     document.getElementById("logout").addEventListener("click", async () => {
-<!--        document.getElementById("play").style.pointerEvents = "auto";-->
-<!--        document.getElementById("play").style.opacity = "1";-->
         document.getElementById("breakCircle").classList.remove("active");
         resetMarkedBreak()
         showLoader()
@@ -1465,8 +1499,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     document.querySelector(".cross-icon").addEventListener("click", () => {
-<!--        document.getElementById("break").style.display = "none";-->
-<!--        document.getElementById("dashboard_content").style.display = "block";-->
         if (!shiftTimerInterval) {
             const userData = JSON.parse(localStorage.getItem("user_data") || "{}");
 
@@ -1486,15 +1518,57 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     document.getElementById("break_logs").addEventListener("click", () => {
-        document.getElementById("dashboard_content").style.display = "none";
-<!--        document.getElementById("break").style.display = "none";-->
         document.getElementById("break_logs_content").style.display = "block";
+        document.getElementById("dashboard_content").style.display = "none";
+        document.getElementById("notifications_content").style.display = "none";
+        document.getElementById("settings_content").style.display = "none";
+        document.getElementById("profile_content").style.display = "none";
+        document.getElementById("back_button").style.display = "block";
     });
 
     document.getElementById("main-dashboard-logo").addEventListener("click", () => {
         document.getElementById("break_logs_content").style.display = "none";
-<!--        document.getElementById("break").style.display = "none";-->
         document.getElementById("dashboard_content").style.display = "block";
+        document.getElementById("notifications_content").style.display = "none";
+        document.getElementById("settings_content").style.display = "none";
+        document.getElementById("profile_content").style.display = "none";
+        document.getElementById("back_button").style.display = "none";
+    });
+
+    document.getElementById("notifications").addEventListener("click", () => {
+        document.getElementById("break_logs_content").style.display = "none";
+        document.getElementById("dashboard_content").style.display = "none";
+        document.getElementById("notifications_content").style.display = "block";
+        document.getElementById("settings_content").style.display = "none";
+        document.getElementById("profile_content").style.display = "none";
+        document.getElementById("back_button").style.display = "block";
+    });
+
+    document.getElementById("settings").addEventListener("click", () => {
+        document.getElementById("break_logs_content").style.display = "none";
+        document.getElementById("dashboard_content").style.display = "none";
+        document.getElementById("notifications_content").style.display = "none";
+        document.getElementById("settings_content").style.display = "block";
+        document.getElementById("profile_content").style.display = "none";
+        document.getElementById("back_button").style.display = "block";
+    });
+
+    document.getElementById("profile").addEventListener("click", () => {
+        document.getElementById("break_logs_content").style.display = "none";
+        document.getElementById("dashboard_content").style.display = "none";
+        document.getElementById("notifications_content").style.display = "none";
+        document.getElementById("settings_content").style.display = "none";
+        document.getElementById("profile_content").style.display = "block";
+        document.getElementById("back_button").style.display = "block";
+    });
+
+    document.getElementById("back_button").addEventListener("click", () => {
+        document.getElementById("break_logs_content").style.display = "none";
+        document.getElementById("dashboard_content").style.display = "block";
+        document.getElementById("notifications_content").style.display = "none";
+        document.getElementById("settings_content").style.display = "none";
+        document.getElementById("profile_content").style.display = "none";
+        document.getElementById("back_button").style.display = "none";
     });
 
     togglePassword.addEventListener("click", () => {
