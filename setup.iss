@@ -1,6 +1,6 @@
 [Setup]
 AppName=WorkTre
-AppVersion=1.0.3
+AppVersion=1.0.6
 DefaultDirName={localappdata}\WorkTre
 DefaultGroupName=WorkTre
 OutputBaseFilename=WorkTreInstaller

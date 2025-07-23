@@ -192,7 +192,9 @@ def on_interval_complete():
 
             if logged_in_user_info is not None:
                 API.lastactivitydate(logged_in_user_info["EID"], "", "", "")
-                API.take_screenshot_with_pillow(logged_in_user_info["EID"])
+
+                if logged_in_user_info["ScreenShotStatus"] == "1":
+                    API.take_screenshot_with_pillow(logged_in_user_info["EID"])
 
             interval_timer = threading.Timer(repeat_interval_seconds, on_interval_complete)
             interval_timer.start()
@@ -1428,7 +1430,7 @@ def start_app(api, html_file):
 
 
 
-    webview.start(debug=True, gui='edgechromium', func=set_window_icon)
+    webview.start(debug=False, gui='edgechromium', func=set_window_icon)
 
 
 def inactivity_window(api, html_file):
