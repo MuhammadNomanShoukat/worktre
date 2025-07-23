@@ -217,6 +217,7 @@ html, body {
 }
  #dashboard .nav-links ul li img{
      width: 35%;
+     border-radius: 50%;
 }
  #dashboard .nav-links ul li .avatar{
      width: 60%;

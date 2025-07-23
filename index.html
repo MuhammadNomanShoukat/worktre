@@ -249,7 +249,7 @@
                                     <p class="mb-0">Settings</p>
                                 </li>
                                 <li>
-                                    <a href="#" id="profile"><img src="assets/images/avatar.png" alt="main-logo" class="awatar" style="width: 55%;" /></a>
+                                    <a href="#" id="profile"><img src="assets/images/avatar.png" alt="main-logo" class="awatar" style="width: 55%;" id="profile_img" /></a>
                                 </li>
                                 <li>
                                     <a href="#" id="logout"><img src="assets/images/logout.png" alt="main-logo" /></a>
@@ -858,6 +858,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         pauseBreakTimer();
 
 
+        document.getElementById("break_logs_content").style.display = "none";
+        document.getElementById("notifications_content").style.display = "none";
+        document.getElementById("settings_content").style.display = "none";
+        document.getElementById("profile_content").style.display = "none";
         document.getElementById("dashboard").style.display = "none";
         document.getElementById("loginPage").style.display = "block";
 
@@ -946,6 +950,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             const { status, data } = JSON.parse(response);
             console.log(data)
             if (status && Object.keys(data).length>0) {
+                await getBreakTypes(data.EID);
 
                 localStorage.setItem("user_data", JSON.stringify(data));
 
@@ -980,6 +985,12 @@ document.addEventListener("DOMContentLoaded", async () => {
                   const breakDetails = getServiceResponse["3)- breakDetails"];
                   const profileAvatar = getServiceResponse["7)- ProfileImage"];
                   const logData = convertLogToFormattedObjects(breakDetails);
+
+                  if(profileAvatar){
+                    document.getElementById("profile_img").src = "https://worktre.com/assets/uploads/avatars/"+profileAvatar;
+                  }
+
+                  console.log(getServiceResponse)
 
                   // Save globally
                   paginatedLogData = logData;
@@ -1494,6 +1505,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     document.getElementById("logout").addEventListener("click", async () => {
         document.getElementById("breakCircle").classList.remove("active");
+        document.getElementById("break_logs_content").style.display = "none";
+        document.getElementById("notifications_content").style.display = "none";
+        document.getElementById("settings_content").style.display = "none";
+        document.getElementById("profile_content").style.display = "none";
         resetMarkedBreak()
         showLoader()
         await logoutAPI()
@@ -1595,11 +1610,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     }
 
-    async function getBreakTypes(){
+    async function getBreakTypes(uid){
         try{
             const userData = JSON.parse(localStorage.getItem("user_data") || "{}");
             const response = await window.pywebview.api.getBreakTypes(
-                userData.EID
+                uid
             );
             if(response){
                 console.log("getBreakTypes called...", response)
@@ -1636,7 +1651,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         loadRememberMeData()
         versionCheck()
         await getAppVersion()
-        await getBreakTypes();
+
       }
     }, 1000);
 
@@ -1652,10 +1667,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     window.inactivityTimeExceed = async function () {
         console.log("⚠️ inactivityTimeExceed");
         hideInactivityModal()
-        redirectLogin()
+
         await callBreakOutAPI("", true)
         await callLogoutInactivityAPI()
-
+        redirectLogin()
 
     }
 
