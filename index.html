@@ -514,6 +514,7 @@
                 <p>Powered by Bioncos Global</p>
             </footer>
         </section>
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
         <script>
 document.addEventListener("DOMContentLoaded", async () => {
     let shiftTimerInterval = null;
@@ -546,6 +547,86 @@ document.addEventListener("DOMContentLoaded", async () => {
 <!--    const connectivityToast = new bootstrap.Toast(toastEl);-->
     const internetOverlay = document.getElementById('internetOverlay');
     const loginErrorNotify = document.getElementById("login_error")
+
+
+
+    async function getSystemActionFromUser() {
+      const brandColor = '#21a78e';
+
+      let selectedAction = null;
+      let reason = null;
+
+      while (true) {
+        const result = await Swal.fire({
+          title: 'Select Crash Reason',
+          input: 'radio',
+          inputOptions: {
+            Restart: 'Restart',
+            Shutdown: 'Shutdown',
+            Sleep: 'Sleep',
+            Hibernate: 'Hibernate',
+            Other: 'Other'
+          },
+          inputValue: selectedAction || 'Restart',
+          inputValidator: (value) => {
+            if (!value) return 'You need to choose an option!';
+          },
+          allowOutsideClick: false,
+          allowEscapeKey: false,
+          allowEnterKey: true,
+          showCancelButton: false,
+          confirmButtonText: 'Next',
+          confirmButtonColor: brandColor,
+          customClass: {
+            popup: 'custom-swal-popup'
+          }
+        });
+
+        selectedAction = result.value;
+
+        if (!selectedAction) return null;
+
+        // If "Other", show textarea dialog with Back option
+        if (selectedAction === 'Other') {
+          const reasonStep = await Swal.fire({
+            title: 'Please specify the reason',
+            input: 'textarea',
+            inputPlaceholder: 'Enter your reason here...',
+            showCancelButton: true,
+            cancelButtonText: 'Back',
+            confirmButtonText: 'Submit',
+            confirmButtonColor: brandColor,
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            allowEnterKey: true,
+            customClass: {
+              popup: 'custom-swal-popup'
+            },
+            inputValidator: (value) => {
+              if (!value) return 'Reason is required for "Other"';
+            }
+          });
+
+          if (reasonStep.isDismissed || reasonStep.dismiss === Swal.DismissReason.cancel) {
+            // User clicked "Back"
+            continue; // Loop back to first question
+          }
+
+          reason = reasonStep.value;
+        }
+
+        break; // Exit loop if action is not "Other", or "Other" with reason submitted
+      }
+
+      return {
+        action: selectedAction,
+        reason: reason
+      };
+    }
+
+
+
+
 
     function createShiftTicks(totalShiftMinutes) {
       const timer = document.getElementById("shiftTimer");
@@ -950,6 +1031,16 @@ document.addEventListener("DOMContentLoaded", async () => {
             const { status, data } = JSON.parse(response);
             console.log(data)
             if (status && Object.keys(data).length>0) {
+                hideLoader()
+                if(data.AttendanceCrashStatus === "1"){
+                    const result = await getSystemActionFromUser();
+                      if (result) {
+                        showLoader()
+                        console.log("User Selected:", result);
+                        await window.pywebview.api.crashlogin(data.EID, result.action, "False");
+                      }
+                }
+
                 await getBreakTypes(data.EID);
 
                 localStorage.setItem("user_data", JSON.stringify(data));
@@ -1026,6 +1117,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
                 document.getElementById("loginPage").style.display = "none";
                 document.getElementById("dashboard").style.display = "block";
+                document.getElementById("dashboard_content").style.display = "block";
                 document.getElementById("loginCircle").classList.add("active");
                 document.getElementById("back_button").style.display = "none";
 
@@ -1504,14 +1596,15 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     document.getElementById("logout").addEventListener("click", async () => {
+        showLoader()
+        resetMarkedBreak()
+        await logoutAPI()
         document.getElementById("breakCircle").classList.remove("active");
         document.getElementById("break_logs_content").style.display = "none";
         document.getElementById("notifications_content").style.display = "none";
         document.getElementById("settings_content").style.display = "none";
         document.getElementById("profile_content").style.display = "none";
-        resetMarkedBreak()
-        showLoader()
-        await logoutAPI()
+
     });
 
     document.querySelector(".cross-icon").addEventListener("click", () => {

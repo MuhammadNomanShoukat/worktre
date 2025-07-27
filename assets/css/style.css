@@ -624,6 +624,40 @@ html, body {
      color: #062c33;
 }
 
+/* Confirm button */
+  .swal2-confirm {
+    background-color: #21a78e !important;
+    border: none !important;
+  }
+
+  /* Popup title */
+  .custom-swal-popup .swal2-title {
+    color: #141619;
+  }
+
+  /* Text inputs and textarea */
+  .custom-swal-popup .swal2-input,
+  .custom-swal-popup .swal2-textarea {
+    border: 1px solid #21a78e;
+    border-radius: 6px;
+  }
+
+  /* Radio labels spacing */
+  .custom-swal-popup .swal2-radio label {
+    margin-left: 6px;
+    font-weight: 500;
+  }
+
+  /* Selected radio color */
+  .custom-swal-popup input[type="radio"]:checked {
+    accent-color: #21a78e;
+  }
+
+  /* Optional: hover effect */
+  .custom-swal-popup input[type="radio"]:hover {
+    cursor: pointer;
+  }
+
 .timer-content .timer-container {
             position: relative;
             width: 200px;

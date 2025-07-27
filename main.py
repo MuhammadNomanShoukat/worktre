@@ -51,6 +51,7 @@ interval_timer = None
 interval_lock = threading.Lock()
 repeat_interval_seconds = 0  # To store and reuse duration
 is_running = False           # Track whether timer is active
+app_version = None
 
 
 try:
@@ -191,7 +192,7 @@ def on_interval_complete():
             print("Restarting interval...")
 
             if logged_in_user_info is not None:
-                API.lastactivitydate(logged_in_user_info["EID"], "", "", "")
+                API.lastactivitydate(logged_in_user_info["EID"], "False", "", "")
 
                 if logged_in_user_info["ScreenShotStatus"] == "1":
                     API.take_screenshot_with_pillow(logged_in_user_info["EID"])
@@ -269,6 +270,7 @@ class API:
         self._warn_after = None
         self._kick_after = None
         self._warned = False
+        self.app_version = None
 
 
 
@@ -284,7 +286,7 @@ class API:
         if logged_in_user_info is not None:
             start_get_service_interval()
             self.start_inactivity()
-            API.lastactivitydate(logged_in_user_info["EID"], "", "", "")
+            API.lastactivitydate(logged_in_user_info["EID"], "True", "", "")
 
 
     def notify_offline(self):
@@ -302,7 +304,7 @@ class API:
         save_remembered_user(email, password)
 
     def login(self, username, password, max_retries=2, delay=2):
-        global logged_in_user_info
+        global logged_in_user_info, app_version
         logging.info("login")
         computer_name = socket.gethostname()
         ip = get_dynamic_ip()
@@ -322,7 +324,7 @@ class API:
                  <employeeaccount>{username}</employeeaccount>
                  <password>{password}</password>
                  <ComputerName>{computer_name}</ComputerName>
-                 <wtversion>2.0</wtversion>
+                 <wtversion>{app_version}</wtversion>
                  <ipaddress>{ip}</ipaddress>
               </web:login>
            </soapenv:Body>
@@ -632,8 +634,14 @@ class API:
             return json_response
 
     def crashlogin(self, userid, breaktype, onbreak):
+        global app_version
         # if not self.is_user_logged_in():
         #     return
+
+        # print(userid)
+        # print(breaktype)
+        # print(onbreak)
+        # return;
 
         computer_name = socket.gethostname()
         ip = get_dynamic_ip()
@@ -654,7 +662,7 @@ class API:
                  <breaktype>{breaktype}</breaktype>
                  <onbreak>{onbreak}</onbreak>
                  <ComputerName>{computer_name}</ComputerName>
-                 <wtversion>2.0</wtversion>
+                 <wtversion>{app_version}</wtversion>
                  <ipaddress>{ip}</ipaddress>
               </web:crashlogin>
            </soapenv:Body>
@@ -665,6 +673,9 @@ class API:
         response = requests.post(url, data=payload, headers=headers, timeout=10)
 
         soap_response = response.text
+
+        print(response)
+
 
 
         # print("CrashLogin API Resp:",soap_response)
@@ -682,8 +693,21 @@ class API:
 
         return_element = root.find('.//ns1:crashloginResponse/return', namespaces)
 
+
+
         if return_element is not None:
+
+
+
             items = return_element.findall('item', namespaces)
+
+            print(items)
+
+            print("======================")
+
+            resp = {"status": True, "data": {}}
+            json_response = json.dumps(resp)
+            return json_response
 
             # Get the keys (first element)
             keys = items[0].text.split(",") if items[0].text else []
@@ -1347,6 +1371,8 @@ class API:
         reset_idle_timer()
 
     def get_version(self):
+        global app_version
+        app_version = get_current_version()
         return get_current_version()
 
     def start_inactivity(self):
