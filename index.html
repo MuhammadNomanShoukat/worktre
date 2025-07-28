@@ -514,7 +514,7 @@
                 <p>Powered by Bioncos Global</p>
             </footer>
         </section>
-        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        <script src="assets/js/sweetalert.js"></script>
         <script>
 document.addEventListener("DOMContentLoaded", async () => {
     let shiftTimerInterval = null;
@@ -553,76 +553,37 @@ document.addEventListener("DOMContentLoaded", async () => {
     async function getSystemActionFromUser() {
       const brandColor = '#21a78e';
 
-      let selectedAction = null;
-      let reason = null;
-
-      while (true) {
-        const result = await Swal.fire({
-          title: 'Select Crash Reason',
-          input: 'radio',
-          inputOptions: {
-            Restart: 'Restart',
-            Shutdown: 'Shutdown',
-            Sleep: 'Sleep',
-            Hibernate: 'Hibernate',
-            Other: 'Other'
-          },
-          inputValue: selectedAction || 'Restart',
-          inputValidator: (value) => {
-            if (!value) return 'You need to choose an option!';
-          },
-          allowOutsideClick: false,
-          allowEscapeKey: false,
-          allowEnterKey: true,
-          showCancelButton: false,
-          confirmButtonText: 'Next',
-          confirmButtonColor: brandColor,
-          customClass: {
-            popup: 'custom-swal-popup'
-          }
-        });
-
-        selectedAction = result.value;
-
-        if (!selectedAction) return null;
-
-        // If "Other", show textarea dialog with Back option
-        if (selectedAction === 'Other') {
-          const reasonStep = await Swal.fire({
-            title: 'Please specify the reason',
-            input: 'textarea',
-            inputPlaceholder: 'Enter your reason here...',
-            showCancelButton: true,
-            cancelButtonText: 'Back',
-            confirmButtonText: 'Submit',
-            confirmButtonColor: brandColor,
-            allowOutsideClick: false,
-            allowEscapeKey: false,
-            allowEnterKey: true,
-            customClass: {
-              popup: 'custom-swal-popup'
-            },
-            inputValidator: (value) => {
-              if (!value) return 'Reason is required for "Other"';
-            }
-          });
-
-          if (reasonStep.isDismissed || reasonStep.dismiss === Swal.DismissReason.cancel) {
-            // User clicked "Back"
-            continue; // Loop back to first question
-          }
-
-          reason = reasonStep.value;
-        }
-
-        break; // Exit loop if action is not "Other", or "Other" with reason submitted
-      }
-
-      return {
-        action: selectedAction,
-        reason: reason
+      const inputOptions = {
+        crash: 'Crash',
+        'network crash': 'Network Crash',
+        'hibernate/sleep': 'Hibernate / Sleep',
+        shutdown: 'Shutdown / Restart'
       };
+
+      const result = await Swal.fire({
+        title: 'Select Crash Reason',
+        input: 'radio',
+        inputOptions,
+        inputValue: 'crash',
+        inputValidator: (value) => {
+          if (!value) return 'You need to choose an option!';
+        },
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        allowEnterKey: true,
+        showCancelButton: false,
+        confirmButtonText: 'Submit',
+        confirmButtonColor: brandColor,
+        customClass: {
+          popup: 'custom-swal-popup'
+        }
+      });
+
+      if (!result.value) return null;
+
+      return inputOptions[result.value]; // Return only the label
     }
+
 
 
 
@@ -1029,17 +990,35 @@ document.addEventListener("DOMContentLoaded", async () => {
         try {
             const response = await window.pywebview.api.login(email, password);
             const { status, data } = JSON.parse(response);
-            console.log(data)
+            console.log("Login Response: ", JSON.parse(response))
             if (status && Object.keys(data).length>0) {
                 hideLoader()
-                if(data.AttendanceCrashStatus === "1"){
+                if (data && typeof data.AttendanceCrashStatus !== 'undefined' && data.LoginStatus === "AlreadyLogin") {
+                  const status = data.AttendanceCrashStatus;
+
+
+
+                  if (status === "1") {
                     const result = await getSystemActionFromUser();
-                      if (result) {
-                        showLoader()
-                        console.log("User Selected:", result);
-                        await window.pywebview.api.crashlogin(data.EID, result.action, "False");
-                      }
+                    if (result) {
+                      showLoader();
+                      console.log("User Selected:", result);
+                      await window.pywebview.api.crashlogin(data.EID, result, data.OnBreakStatus === "True" ? "True" : "False");
+                    }
+                  } else if (status === "ManualLogout") {
+                    await window.pywebview.api.crashlogin(data.EID, status, "False");
+                  } else {
+                    await window.pywebview.api.crashlogin(data.EID, status, "True");
+                  }
+                } else {
+                  console.warn("AttendanceCrashStatus is not available in data.");
                 }
+
+
+
+
+
+
 
                 await getBreakTypes(data.EID);
 
@@ -1090,7 +1069,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                   // First page render
                   renderLogsToTable(paginatedLogData, '.logs-tbl tbody', currentPage);
 
-                  hideLoader();
+
                 }
 
 
@@ -1122,7 +1101,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 document.getElementById("back_button").style.display = "none";
 
 
-
+                hideLoader();
                 resetAllTimers();
                 createShiftTicks(totalShiftMinutes);
                 createBreakTicks();
@@ -1532,6 +1511,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     async function logoutAPI(){
         try {
+
             stopShiftTimer();
             pauseBreakTimer();
 
@@ -1596,6 +1576,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     document.getElementById("logout").addEventListener("click", async () => {
+        if(breakMarked){
+            alert("Please end your break before logging out of the application.")
+            return;
+        }
         showLoader()
         resetMarkedBreak()
         await logoutAPI()
@@ -1712,7 +1696,6 @@ document.addEventListener("DOMContentLoaded", async () => {
             if(response){
                 console.log("getBreakTypes called...", response)
                 populateBreakTypes(response)
-                hideLoader()
             }
 
         }catch(err){
