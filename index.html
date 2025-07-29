@@ -553,11 +553,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     async function getSystemActionFromUser() {
       const brandColor = '#21a78e';
 
+      // key: value to return | value: label to show
       const inputOptions = {
-        crash: 'Crash',
+        'crash': 'Crash',
         'network crash': 'Network Crash',
         'hibernate/sleep': 'Hibernate / Sleep',
-        shutdown: 'Shutdown / Restart'
+        'shutdown': 'Shutdown / Restart'
       };
 
       const result = await Swal.fire({
@@ -581,8 +582,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       if (!result.value) return null;
 
-      return inputOptions[result.value]; // Return only the label
+      return result.value; // Return the key (e.g., 'crash')
     }
+
 
 
 
@@ -992,14 +994,16 @@ document.addEventListener("DOMContentLoaded", async () => {
             const { status, data } = JSON.parse(response);
             console.log("Login Response: ", JSON.parse(response))
             if (status && Object.keys(data).length>0) {
-                hideLoader()
+
                 if (data && typeof data.AttendanceCrashStatus !== 'undefined' && data.LoginStatus === "AlreadyLogin") {
                   const status = data.AttendanceCrashStatus;
 
 
-
                   if (status === "1") {
+                    hideLoader()
                     const result = await getSystemActionFromUser();
+
+
                     if (result) {
                       showLoader();
                       console.log("User Selected:", result);

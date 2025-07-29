@@ -7,7 +7,6 @@ import logging
 import requests
 import socket
 import json
-import ctypes
 import portalocker
 import tempfile
 from PIL import ImageGrab
@@ -17,7 +16,6 @@ import time
 import threading
 import shutil
 from updater import check_for_update, download_and_install, get_current_version
-import urllib.request
 import xml.etree.ElementTree as ET
 from cryptography.fernet import Fernet
 from system_monitor import start_monitor
@@ -365,9 +363,9 @@ class API:
                             resp = {"status": False, "data": data}
                             return json.dumps(resp)
 
-                    if data and isinstance(data, dict):
-                        if data.get("LoginStatus") == "AlreadyLogin":
-                            self.crashlogin(data.get("EID", ""), "crash", "False")
+                    # if data and isinstance(data, dict):
+                    #     if data.get("LoginStatus") == "AlreadyLogin":
+                    #         self.crashlogin(data.get("EID", ""), "crash", "False")
 
 
 
@@ -680,6 +678,10 @@ class API:
 
         # print("CrashLogin API Resp:",soap_response)
 
+        resp = {"status": True, "data": {}}
+        json_response = json.dumps(resp)
+        return json_response
+
         # Parse the SOAP response
         root = ET.fromstring(soap_response)
 
@@ -705,9 +707,7 @@ class API:
 
             print("======================")
 
-            resp = {"status": True, "data": {}}
-            json_response = json.dumps(resp)
-            return json_response
+
 
             # Get the keys (first element)
             keys = items[0].text.split(",") if items[0].text else []
@@ -1487,6 +1487,5 @@ def inactivity_window(api, html_file):
 
 # ---------------------- Entry Point ----------------------
 if __name__ == '__main__':
-    # from api import API  # Assuming API is defined in api.py or above
     run_update_if_needed()
     start_app(API(), 'index.html')
