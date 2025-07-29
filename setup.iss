@@ -2,9 +2,9 @@
 
 [Setup]
 AppName={#MyAppName}
-AppVersion=1.0.2
+AppVersion=1.0.3
 AppID={#MyAppName}App
-AppPublisher=Powered by Bioncos Global
+AppPublisher=Bioncos Global - IT Solutions
 AppPublisherURL=https://personalcompany.example.com
 AppSupportURL=https://personalcompany.example.com/support
 AppUpdatesURL=https://personalcompany.example.com/updates
